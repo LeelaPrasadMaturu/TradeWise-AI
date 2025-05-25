@@ -10,6 +10,9 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - 😊 Emotional state analysis for better decision making
 - 📈 Performance analytics and insights
 - 🔒 Secure user authentication and data protection
+- 📧 Weekly AI-powered market insights delivered to your email every Sunday
+- 🤖 Direct integration with Gemini AI for intelligent market analysis
+
 
 ## Tech Stack
 
@@ -205,6 +208,22 @@ Create a new price alert.
 }
 ```
 
+Example for cryptocurrency:
+```json
+{
+  "symbol": "BTC",
+  "assetType": "crypto",
+  "triggerType": "price_above",
+  "triggerValue": 30000,
+  "notificationChannels": {
+    "email": true,
+    "telegram": false,
+    "sms": false
+  },
+  "description": "BTC price alert above 30,000 USDT"
+}
+```
+
 #### GET /api/alerts
 Get all alerts for the authenticated user.
 
@@ -233,12 +252,26 @@ Get alert statistics including:
   - Interactive alert management
   - Custom commands for market data
 
+### Trading Analytics & Automation
+- [ ] Comprehensive Trade Performance Dashboard
+  - Detailed metrics and analytics for all trades
+  - Performance tracking across different timeframes
+  - Profit/loss visualization and analysis
+
+- [ ] Custom Strategy Analysis
+
+- [ ] Demat Account Integration
+  - Direct connection with your trading account
+  - Automated trade entry and tracking
+  - Simplified trade logging - just enter your trading rationale
+  - Real-time portfolio synchronization
+
 ### Extended Market Coverage
 - [ ] Indian Markets Integration
   - NSE (National Stock Exchange)
   - BSE (Bombay Stock Exchange)
   - F&O segment
-  - Currency derivatives
+
 
 - [ ] Global Markets Support
   - European markets (LSE, Euronext)
@@ -248,16 +281,8 @@ Get alert statistics including:
 
 ### Educational Features
 - [ ] Interactive Quiz System
-  - Multiple difficulty levels
-  - Topic-based quizzes
-  - Performance tracking
-  - Leaderboards
-
 - [ ] Flashcard Game
-  - Trading terminology
-  - Technical analysis patterns
-  - Market concepts
-  - Spaced repetition learning
+
 
 ## Error Handling
 
@@ -289,6 +314,3 @@ The API uses standard HTTP status codes:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
-
-For support, email support@tradewise-ai.com or open an issue in the repository. 
