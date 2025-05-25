@@ -31,7 +31,7 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - API keys for:
   - Cohere AI
   - Hugging Face
-  - OpenAI
+  - Gemini AI
 
 ## Installation
 
