@@ -31,7 +31,7 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - API keys for:
   - Cohere AI
   - Hugging Face
-  - Gemini AI
+  - OpenAI
 
 ## Installation
 
@@ -105,6 +105,76 @@ Login to get JWT token.
   "email": "user@example.com",
   "password": "securepassword"
 }
+```
+
+### Price Routes
+
+#### GET /api/prices
+Get prices for all supported assets.
+```json
+Response:
+{
+  "success": true,
+  "data": {
+    "crypto": [
+      {
+        "symbol": "bitcoin",
+        "assetType": "crypto",
+        "price": 50000.00,
+        "timestamp": "2024-03-14T12:00:00.000Z"
+      },
+      {
+        "symbol": "ethereum",
+        "assetType": "crypto",
+        "price": 3000.00,
+        "timestamp": "2024-03-14T12:00:00.000Z"
+      }
+    ],
+    "stocks": [],
+    "forex": [],
+    "commodities": [],
+    "timestamp": "2024-03-14T12:00:00.000Z"
+  }
+}
+```
+
+#### GET /api/prices/:assetType
+Get prices for a specific asset type.
+Query Parameters:
+- `symbols`: Comma-separated list of symbols (optional)
+
+Example for crypto:
+```http
+GET /api/prices/crypto?symbols=bitcoin,ethereum
+Response:
+{
+  "success": true,
+  "data": [
+    {
+      "symbol": "bitcoin",
+      "assetType": "crypto",
+      "price": 50000.00,
+      "timestamp": "2024-03-14T12:00:00.000Z"
+    },
+    {
+      "symbol": "ethereum",
+      "assetType": "crypto",
+      "price": 3000.00,
+      "timestamp": "2024-03-14T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+Supported Asset Types:
+- `crypto`: Cryptocurrency prices (implemented)
+- `stocks`: Stock prices (coming soon)
+- `forex`: Forex prices (coming soon)
+- `commodities`: Commodity prices (coming soon)
+
+Note: All price routes require authentication. Include the JWT token in the Authorization header:
+```
+Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 ### Trade Routes
