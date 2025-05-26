@@ -12,6 +12,8 @@ const authRoutes = require('./routes/authRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
 const explainRoutes = require('./routes/explainRoutes');
 const insightRoutes = require('./routes/insightRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+const priceRoutes = require('./routes/priceRoutes');
 
 // Create Express app
 const app = express();
@@ -53,6 +55,8 @@ app.use(`${constants.API_PREFIX}/auth`, authRoutes);
 app.use(`${constants.API_PREFIX}/trades`, tradeRoutes);
 app.use(`${constants.API_PREFIX}/explain`, explainRoutes);
 app.use(`${constants.API_PREFIX}/insights`, insightRoutes);
+app.use(`${constants.API_PREFIX}/alerts`, alertRoutes);
+app.use(`${constants.API_PREFIX}/prices`, priceRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
