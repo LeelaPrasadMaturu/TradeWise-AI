@@ -4,7 +4,90 @@ const Trade = require('../models/Trade');
 const auth = require('../middlewares/authMiddleware');
 const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDetectService');
 
-// Create new trade
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Trade:
+ *       type: object
+ *       required:
+ *         - symbol
+ *         - entryPrice
+ *         - quantity
+ *         - direction
+ *       properties:
+ *         symbol:
+ *           type: string
+ *           description: Trading symbol (e.g., BTC/USD)
+ *         entryPrice:
+ *           type: number
+ *           description: Entry price of the trade
+ *         exitPrice:
+ *           type: number
+ *           description: Exit price of the trade
+ *         quantity:
+ *           type: number
+ *           description: Quantity of the trade
+ *         direction:
+ *           type: string
+ *           enum: [long, short]
+ *           description: Trade direction
+ *         stopLoss:
+ *           type: number
+ *           description: Stop loss price
+ *         takeProfit:
+ *           type: number
+ *           description: Take profit price
+ *         reason:
+ *           type: string
+ *           description: Reason for taking the trade
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Tags associated with the trade
+ *         result:
+ *           type: string
+ *           enum: [win, loss, breakeven, pending]
+ *           description: Trade result
+ *         profitLoss:
+ *           type: number
+ *           description: Profit or loss amount
+ *         notes:
+ *           type: string
+ *           description: Additional notes
+ *         chartScreenshot:
+ *           type: string
+ *           description: URL to chart screenshot
+ *         emotionAnalysis:
+ *           type: object
+ *           description: Emotion analysis of the trade reason
+ */
+
+/**
+ * @swagger
+ * /trades:
+ *   post:
+ *     summary: Create a new trade
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Trade'
+ *     responses:
+ *       201:
+ *         description: Trade created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Trade'
+ *       401:
+ *         description: Authentication required
+ */
 router.post('/', auth, async (req, res) => {
   try {
     const trade = new Trade({
@@ -29,7 +112,52 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Get all trades for user
+/**
+ * @swagger
+ * /trades:
+ *   get:
+ *     summary: Get all trades for the authenticated user
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           default: -tradeDate
+ *         description: Sort field and direction
+ *     responses:
+ *       200:
+ *         description: List of trades
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 trades:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Trade'
+ *                 totalPages:
+ *                   type: integer
+ *                 currentPage:
+ *                   type: integer
+ *       401:
+ *         description: Authentication required
+ */
 router.get('/', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, sort = '-tradeDate' } = req.query;
@@ -50,7 +178,51 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get trade statistics
+/**
+ * @swagger
+ * /trades/stats:
+ *   get:
+ *     summary: Get trade statistics
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trade statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 overall:
+ *                   type: object
+ *                   properties:
+ *                     totalTrades:
+ *                       type: integer
+ *                     winningTrades:
+ *                       type: integer
+ *                     losingTrades:
+ *                       type: integer
+ *                     totalProfitLoss:
+ *                       type: number
+ *                     avgProfitLoss:
+ *                       type: number
+ *                 byTag:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       tag:
+ *                         type: string
+ *                       total:
+ *                         type: integer
+ *                       wins:
+ *                         type: integer
+ *                       winRate:
+ *                         type: number
+ *       401:
+ *         description: Authentication required
+ */
 router.get('/stats', auth, async (req, res) => {
   try {
     const stats = await Trade.aggregate([
@@ -109,7 +281,33 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
-// Get single trade
+/**
+ * @swagger
+ * /trades/{id}:
+ *   get:
+ *     summary: Get a single trade by ID
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trade ID
+ *     responses:
+ *       200:
+ *         description: Trade details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Trade'
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Trade not found
+ */
 router.get('/:id', auth, async (req, res) => {
   try {
     const trade = await Trade.findOne({
@@ -127,7 +325,72 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Update trade
+/**
+ * @swagger
+ * /trades/{id}:
+ *   patch:
+ *     summary: Update a trade
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trade ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               symbol:
+ *                 type: string
+ *               entryPrice:
+ *                 type: number
+ *               exitPrice:
+ *                 type: number
+ *               quantity:
+ *                 type: number
+ *               direction:
+ *                 type: string
+ *                 enum: [long, short]
+ *               stopLoss:
+ *                 type: number
+ *               takeProfit:
+ *                 type: number
+ *               reason:
+ *                 type: string
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               result:
+ *                 type: string
+ *                 enum: [win, loss, breakeven, pending]
+ *               profitLoss:
+ *                 type: number
+ *               notes:
+ *                 type: string
+ *               chartScreenshot:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Trade updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Trade'
+ *       400:
+ *         description: Invalid updates
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Trade not found
+ */
 router.patch('/:id', auth, async (req, res) => {
   const updates = Object.keys(req.body);
   const allowedUpdates = [
@@ -175,7 +438,55 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
-// Update specific trade details
+/**
+ * @swagger
+ * /trades/{id}/details:
+ *   patch:
+ *     summary: Update specific trade details
+ *     tags: [Trades]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trade ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               entryPrice:
+ *                 type: number
+ *                 required: true
+ *               exitPrice:
+ *                 type: number
+ *               stopLoss:
+ *                 type: number
+ *               takeProfit:
+ *                 type: number
+ *               notes:
+ *                 type: string
+ *               chartScreenshot:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Trade details updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Trade'
+ *       400:
+ *         description: Invalid fields provided
+ *       401:
+ *         description: Authentication required
+ *       404:
+ *         description: Trade not found
+ */
 router.patch('/:id/details', auth, async (req, res) => {
   const allowedDetails = {
     entryPrice: { type: 'number', required: true },

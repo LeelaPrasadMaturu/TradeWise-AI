@@ -4,6 +4,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const winston = require('winston');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
 const connectDB = require('./config/db');
 const constants = require('./config/constants');
 
@@ -41,6 +43,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -76,6 +81,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(`API Documentation available at http://localhost:${PORT}/api-docs`);
     });
   } catch (err) {
     logger.error('Failed to start server:', err);

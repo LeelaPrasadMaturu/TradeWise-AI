@@ -2,8 +2,8 @@ const axios = require('axios');
 const TradeAlert = require('../models/TradeAlert');
 const User = require('../models/User');
 const { sendTradeAlertEmail } = require('./emailService');
-const { sendTelegramMessage } = require('./telegramService');
-const { sendSMS } = require('./smsService');
+// // const { sendTelegramMessage } = require('./telegramService');
+// const { sendSMS } = require('./smsService');
 
 class AlertMonitorService {
   constructor() {
