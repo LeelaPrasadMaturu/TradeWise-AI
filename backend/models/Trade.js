@@ -42,10 +42,31 @@ const tradeSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  exitReason: {
+    type: String,
+    trim: true
+  },
   emotionAnalysis: {
     detected: {
       type: String,
-      enum: ['confidence', 'fear', 'neutral']
+      enum: ['positive', 'negative', 'neutral']
+    },
+    confidence: {
+      type: Number,
+      min: 0,
+      max: 1
+    },
+    source: {
+      type: String,
+      enum: ['finbert', 'keyword']
+    },
+    rawSentiment: String,
+    emotionType: String
+  },
+  exitEmotionAnalysis: {
+    detected: {
+      type: String,
+      enum: ['positive', 'negative', 'neutral']
     },
     confidence: {
       type: Number,
@@ -73,6 +94,22 @@ const tradeSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
+  },
+  postTradeReview: {
+    mistakes: { type: String, trim: true },
+    planFollowed: { type: String, trim: true },
+    stopLossMovement: { type: String, trim: true },
+    lessons: { type: String, trim: true }
+  },
+  postTradeAnalysis: {
+    generatedAt: { type: Date },
+    model: { type: String, trim: true },
+    summary: { type: String },
+    recommendations: [{ type: String }],
+    risksObserved: [{ type: String }],
+    structured: {
+      type: Object
+    }
   },
   chartScreenshot: {
     type: String

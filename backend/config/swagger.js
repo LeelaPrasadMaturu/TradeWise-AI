@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api/v1',
+        url: 'http://localhost:3000/api',
         description: 'Development server',
       },
     ],
@@ -27,7 +27,7 @@ const options = {
       bearerAuth: [],
     }],
   },
-  apis: ['./routes/*.js'], // Path to the API routes
+  apis: ['backend/routes/*.js'], // Path to the API routes
 };
 
 const specs = swaggerJsdoc(options);

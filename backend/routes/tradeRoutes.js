@@ -3,6 +3,7 @@ const router = express.Router();
 const Trade = require('../models/Trade');
 const auth = require('../middlewares/authMiddleware');
 const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDetectService');
+const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisService');
 
 /**
  * @swagger
@@ -41,6 +42,9 @@ const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDe
  *         reason:
  *           type: string
  *           description: Reason for taking the trade
+ *         exitReason:
+ *           type: string
+ *           description: Reason for exiting the trade
  *         tags:
  *           type: array
  *           items:
@@ -48,7 +52,7 @@ const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDe
  *           description: Tags associated with the trade
  *         result:
  *           type: string
- *           enum: [win, loss, breakeven, pending]
+ *           enum: [win, loss, breakeven, open]
  *           description: Trade result
  *         profitLoss:
  *           type: number
@@ -56,6 +60,17 @@ const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDe
  *         notes:
  *           type: string
  *           description: Additional notes
+ *         postTradeReview:
+ *           type: object
+ *           properties:
+ *             mistakes:
+ *               type: string
+ *             planFollowed:
+ *               type: string
+ *             stopLossMovement:
+ *               type: string
+ *             lessons:
+ *               type: string
  *         chartScreenshot:
  *           type: string
  *           description: URL to chart screenshot
@@ -106,6 +121,16 @@ router.post('/', auth, async (req, res) => {
     }
 
     await trade.save();
+
+    // Generate initial post-trade analysis if exit data present
+    if (trade.exitPrice || trade.exitReason || trade.postTradeReview) {
+      try {
+        trade.postTradeAnalysis = await generatePostTradeAnalysis(trade);
+        await trade.save();
+      } catch (e) {
+        console.error('Post-trade analysis error:', e.message);
+      }
+    }
     res.status(201).json(trade);
   } catch (error) {
     res.status(500).json({ message: 'Error creating trade', error: error.message });
@@ -370,13 +395,26 @@ router.get('/:id', auth, async (req, res) => {
  *                   type: string
  *               result:
  *                 type: string
- *                 enum: [win, loss, breakeven, pending]
+ *                 enum: [win, loss, breakeven, open]
  *               profitLoss:
  *                 type: number
  *               notes:
  *                 type: string
  *               chartScreenshot:
  *                 type: string
+ *               exitReason:
+ *                 type: string
+ *               postTradeReview:
+ *                 type: object
+ *                 properties:
+ *                   mistakes:
+ *                     type: string
+ *                   planFollowed:
+ *                     type: string
+ *                   stopLossMovement:
+ *                     type: string
+ *                   lessons:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Trade updated successfully
@@ -395,8 +433,8 @@ router.patch('/:id', auth, async (req, res) => {
   const updates = Object.keys(req.body);
   const allowedUpdates = [
     'symbol', 'entryPrice', 'exitPrice', 'quantity',
-    'direction', 'stopLoss', 'takeProfit', 'reason',
-    'tags', 'result', 'profitLoss', 'notes', 'chartScreenshot'
+    'direction', 'stopLoss', 'takeProfit', 'reason', 'exitReason',
+    'tags', 'result', 'profitLoss', 'notes', 'chartScreenshot', 'postTradeReview'
   ];
   const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
@@ -425,6 +463,12 @@ router.patch('/:id', auth, async (req, res) => {
       trade.tags = [...new Set([...userTags, ...extractedTags])];
     }
 
+  // If exitReason is updated, analyze exit emotion
+  if (updates.includes('exitReason')) {
+    const exitEmotion = await analyzeEmotion(req.body.exitReason);
+    trade.exitEmotionAnalysis = exitEmotion;
+  }
+
     updates.forEach(update => {
       if (update !== 'reason' && update !== 'tags') {
         trade[update] = req.body[update];
@@ -432,6 +476,16 @@ router.patch('/:id', auth, async (req, res) => {
     });
     
     await trade.save();
+
+    // If exit-related fields or review changed, regenerate analysis
+    if (updates.some(u => ['exitPrice', 'exitReason', 'postTradeReview', 'result', 'profitLoss'].includes(u))) {
+      try {
+        trade.postTradeAnalysis = await generatePostTradeAnalysis(trade);
+        await trade.save();
+      } catch (e) {
+        console.error('Post-trade analysis error:', e.message);
+      }
+    }
     res.json(trade);
   } catch (error) {
     res.status(500).json({ message: 'Error updating trade', error: error.message });

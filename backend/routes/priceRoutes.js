@@ -73,7 +73,7 @@ const auth = require('../middlewares/authMiddleware');
  *       401:
  *         description: Authentication required
  */
-router.get('/', priceController.getAllPrices);
+router.get('/', auth, priceController.getAllPrices);
 
 /**
  * @swagger
@@ -103,6 +103,6 @@ router.get('/', priceController.getAllPrices);
  *       400:
  *         description: Invalid asset type
  */
-router.get('/:assetType', priceController.getAssetPrices);
+router.get('/:assetType', auth, priceController.getAssetPrices);
 
 module.exports = router; 

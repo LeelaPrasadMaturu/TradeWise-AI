@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const winston = require('winston');
 const swaggerUi = require('swagger-ui-express');
+const { createRateLimiter } = require('./middlewares/rateLimit');
 const swaggerSpecs = require('./config/swagger');
 const connectDB = require('./config/db');
 const constants = require('./config/constants');
@@ -43,6 +44,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global basic rate limit: 300 req/min per IP
+app.use(createRateLimiter({ window: '1m', max: 300 }));
+
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
@@ -56,12 +60,17 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-app.use(`${constants.API_PREFIX}/auth`, authRoutes);
-app.use(`${constants.API_PREFIX}/trades`, tradeRoutes);
-app.use(`${constants.API_PREFIX}/explain`, explainRoutes);
-app.use(`${constants.API_PREFIX}/insights`, insightRoutes);
-app.use(`${constants.API_PREFIX}/alerts`, alertRoutes);
-app.use(`${constants.API_PREFIX}/prices`, priceRoutes);
+// Tighter limits for sensitive routes
+const authLimiter = createRateLimiter({ window: '15m', max: 100 });
+const writeLimiter = createRateLimiter({ window: '1m', max: 60 });
+const monitorLimiter = createRateLimiter({ window: '1m', max: 10 });
+
+app.use(`${constants.API_PREFIX}/auth`, authLimiter, authRoutes);
+app.use(`${constants.API_PREFIX}/trades`, writeLimiter, tradeRoutes);
+app.use(`${constants.API_PREFIX}/explain`, writeLimiter, explainRoutes);
+app.use(`${constants.API_PREFIX}/insights`, writeLimiter, insightRoutes);
+app.use(`${constants.API_PREFIX}/alerts`, monitorLimiter, alertRoutes);
+app.use(`${constants.API_PREFIX}/prices`, writeLimiter, priceRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

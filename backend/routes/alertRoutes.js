@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const alertController = require('../controllers/alertController');
-const { protect } = require('../middlewares/authMiddleware');
+const auth = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -84,7 +84,7 @@ const { protect } = require('../middlewares/authMiddleware');
  *       401:
  *         description: Authentication required
  */
-router.post('/', alertController.createAlert);
+router.post('/', auth, alertController.createAlert);
 
 /**
  * @swagger
@@ -106,7 +106,7 @@ router.post('/', alertController.createAlert);
  *       401:
  *         description: Authentication required
  */
-router.get('/', alertController.getUserAlerts);
+router.get('/', auth, alertController.getUserAlerts);
 
 /**
  * @swagger
@@ -141,7 +141,7 @@ router.get('/', alertController.getUserAlerts);
  *       404:
  *         description: Alert not found
  */
-router.put('/:id', alertController.updateAlert);
+router.put('/:id', auth, alertController.updateAlert);
 
 /**
  * @swagger
@@ -166,7 +166,7 @@ router.put('/:id', alertController.updateAlert);
  *       404:
  *         description: Alert not found
  */
-router.delete('/:id', alertController.deleteAlert);
+router.delete('/:id', auth, alertController.deleteAlert);
 
 /**
  * @swagger
@@ -186,7 +186,7 @@ router.delete('/:id', alertController.deleteAlert);
  *       401:
  *         description: Authentication required
  */
-router.get('/stats', alertController.getAlertStats);
+router.get('/stats', auth, alertController.getAlertStats);
 
 /**
  * @swagger
@@ -202,7 +202,7 @@ router.get('/stats', alertController.getAlertStats);
  *       401:
  *         description: Authentication required
  */
-router.post('/monitor/start', alertController.startMonitoring);
+router.post('/monitor/start', auth, alertController.startMonitoring);
 
 /**
  * @swagger
@@ -218,6 +218,6 @@ router.post('/monitor/start', alertController.startMonitoring);
  *       401:
  *         description: Authentication required
  */
-router.post('/monitor/stop', alertController.stopMonitoring);
+router.post('/monitor/stop', auth, alertController.stopMonitoring);
 
 module.exports = router; 

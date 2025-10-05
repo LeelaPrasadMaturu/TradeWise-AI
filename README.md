@@ -8,6 +8,8 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - 📊 Comprehensive trade tracking and statistics
 - 🎯 Strategy and pattern recognition
 - 😊 Emotional state analysis for better decision making
+- 🧠 Exit-reason emotion analysis with FinBERT (positive/negative/neutral)
+- 📝 Automatic post-trade AI review when exit data is provided
 - 📈 Performance analytics and insights
 - 🔒 Secure user authentication and data protection
 - 📧 Weekly AI-powered market insights delivered to your email every Sunday
@@ -18,10 +20,10 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 
 - **Backend**: Node.js, Express.js
 - **Database**: MongoDB
-- **AI Services**: 
-  - Cohere AI (for natural language processing)
-  - Hugging Face (for emotion detection)
-  - Google gemini api ( For weekly insights )
+- **AI Services**:
+  - Cohere AI (explanations)
+  - Hugging Face FinBERT (emotion detection)
+  - Google Gemini (weekly insights and post-trade analysis)
 - **Authentication**: JWT
 
 ## Prerequisites
@@ -31,7 +33,7 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - API keys for:
   - Cohere AI
   - Hugging Face
-  - OpenAI
+  - Google Gemini
 
 ## Installation
 
@@ -58,7 +60,7 @@ JWT_SECRET=your_jwt_secret_key
 # AI Service API Keys
 COHERE_API_KEY=your_cohere_api_key
 HUGGINGFACE_API_KEY=your_huggingface_api_key
-OPENAI_API_KEY=your_openai_api_key
+GOOGLE_AI_API_KEY=your_google_gemini_api_key
 ```
 
 ## Getting API Keys
@@ -77,12 +79,11 @@ OPENAI_API_KEY=your_openai_api_key
 4. Create a new token with read access
 5. Copy the token to your `.env` file
 
-### 3. OpenAI API Key
-1. Visit [Google Gemini Api](#)
-2. Sign up for an account
-3. Go to API Keys section
-4. Create a new secret key
-5. Copy the key to your `.env` file
+### 3. Google Gemini API Key
+1. Visit the Google AI Studio website
+2. Sign in and create a project
+3. Generate an API key for Generative Language
+4. Copy the key to your `.env` as `GOOGLE_AI_API_KEY`
 
 ## API Documentation
 
@@ -194,9 +195,11 @@ Create a new trade entry.
 }
 ```
 The system will automatically:
-- Analyze the trade reason for emotional content
+- Analyze the trade reason for emotional content using FinBERT
 - Extract relevant trading strategy tags
 - Combine them with user-provided tags
+
+Emotion labels stored under `emotionAnalysis.detected` use FinBERT outcomes: `positive`, `negative`, `neutral`.
 
 #### GET /api/trades
 Get all trades with pagination and sorting.
@@ -230,6 +233,10 @@ Update a trade. Allowed fields:
 - profitLoss
 - notes
 - chartScreenshot
+- exitReason
+- postTradeReview (object)
+
+When you update `reason`, the system re-runs emotion analysis and enriches `tags` based on detected keywords. When you update `exitReason`, the system saves `exitEmotionAnalysis` (FinBERT labels) and, if any exit-related fields change (`exitPrice`, `exitReason`, `postTradeReview`, `result`, `profitLoss`), it generates a fresh `postTradeAnalysis` using Google Gemini and embeds it under `postTradeAnalysis`.
 
 #### DELETE /api/trades/:id
 Delete a trade.
@@ -297,7 +304,7 @@ Example for cryptocurrency:
 #### GET /api/alerts
 Get all alerts for the authenticated user.
 
-#### PATCH /api/alerts/:id
+#### PUT /api/alerts/:id
 Update an existing alert.
 
 #### DELETE /api/alerts/:id
@@ -305,6 +312,12 @@ Delete an alert.
 
 #### GET /api/alerts/stats
 Get alert statistics including:
+- #### POST /api/alerts/monitor/start
+Start background price monitoring for active alerts.
+
+- #### POST /api/alerts/monitor/stop
+Stop background price monitoring.
+
 - Total active alerts
 - Triggered alerts count
 - Cancelled alerts count
@@ -353,6 +366,15 @@ Get alert statistics including:
 - [ ] Interactive Quiz System
 - [ ] Flashcard Game
 
+
+## Additional Insights (from trading logs)
+
+- Profit percentage (per trade): Derived from stored fields when an exit exists.
+  - Formula: `profitPercentage = (profitLoss / (entryPrice * quantity)) * 100`
+  - Notes:
+    - Positive for profitable trades, negative for losing trades
+    - Can be summarized across a set of trades (e.g., average profit percentage) in reports/insights
+    - Since `profitLoss`, `entryPrice`, and `quantity` are already stored, this can be computed client- or server-side without schema changes
 
 ## Error Handling
 
