@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/authMiddleware');
 const { explainTerm } = require('../services/aiExplainService');
+const { 
+  generatePersonalizedQuiz, 
+  generatePersonalizedFlashcards 
+} = require('../services/quizFlashcardService');
 
 /**
  * @swagger
@@ -202,14 +206,14 @@ router.get('/term', auth, async (req, res) => {
  */
 router.get('/quiz', auth, async (req, res) => {
   try {
-    const { difficulty = 'easy', count = 5 } = req.query;
+    const { difficulty = 'medium', count = 5 } = req.query;
     
-    // TODO: Implement quiz generation using AI
-    res.json({
-      message: 'Quiz generation coming soon',
-      difficulty,
-      count
+    const quiz = await generatePersonalizedQuiz(req.user._id, {
+      count: parseInt(count),
+      difficulty
     });
+    
+    res.json(quiz);
   } catch (error) {
     res.status(500).json({ message: 'Error generating quiz', error: error.message });
   }
@@ -251,14 +255,14 @@ router.get('/quiz', auth, async (req, res) => {
  */
 router.get('/flashcards', auth, async (req, res) => {
   try {
-    const { category, count = 10 } = req.query;
+    const { category = 'all', count = 10 } = req.query;
     
-    // TODO: Implement flashcard generation using AI
-    res.json({
-      message: 'Flashcard generation coming soon',
-      category,
-      count
+    const flashcards = await generatePersonalizedFlashcards(req.user._id, {
+      count: parseInt(count),
+      category
     });
+    
+    res.json(flashcards);
   } catch (error) {
     res.status(500).json({ message: 'Error generating flashcards', error: error.message });
   }

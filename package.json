@@ -1,32 +1,41 @@
 {
-  "name": "finsage",
-  "version": "1.0.0",
-  "description": "A smart trading assistant that explains trades, analyzes decisions, and provides weekly personalized insights",
+  "name": "TradeWise-AI",
+  "version": "1.2.1",
+  "description": "TradeWise AI is a sophisticated trading assistant that combines AI-powered analysis with comprehensive trade tracking and emotional intelligence to help traders make better decisions.",
   "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "test": "jest"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:e2e": "jest tests/e2e"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^8.1.0",
-    "dotenv": "^16.3.1",
-    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
+    "cohere-ai": "^7.5.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.1.0",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.8",
-    "winston": "^3.11.0",
-    "joi": "^17.11.0",
-    "cohere-ai": "^7.5.0",
-    "axios": "^1.6.2"
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
+    "@types/jest": "^29.5.0",
     "jest": "^29.7.0",
+    "mongodb-memory-server": "^9.1.0",
+    "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
   }
-} 
+}
