@@ -10,7 +10,8 @@ module.exports = {
     COHERE: {
       MODEL: 'command-a-03-2025',
       MAX_TOKENS: 300,
-      TEMPERATURE: 0.7
+      TEMPERATURE: 0.7 // More temperature means more creativity, it is in range between 0 to 1 - more non-deterministic answer or more random answer
+      // for a determinisitc answer, use lower tempatures 
     },
     HUGGINGFACE: {
       MODEL: 'ProsusAI/finbert'  // Financial sentiment analysis model
@@ -27,7 +28,7 @@ module.exports = {
   // Weekly Insights Configuration
   INSIGHTS: {
     CRON_SCHEDULE: '0 0 * * 0', // Every Sunday at midnight
-    MAX_TRADES_ANALYZED: 100
+    MAX_TRADES_ANALYZED: 100 
   },
   
   // Error Messages
