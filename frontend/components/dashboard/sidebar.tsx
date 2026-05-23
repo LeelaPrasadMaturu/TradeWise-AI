@@ -12,6 +12,7 @@ import {
   Shield,
   Settings,
   LogOut,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Discipline', href: '/discipline', icon: Shield },
+  { name: 'Reports', href: '/reports', icon: Receipt },
 ];
 
 const secondaryNavigation = [

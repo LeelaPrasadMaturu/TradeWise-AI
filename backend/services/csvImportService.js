@@ -163,6 +163,100 @@ function normalizeTradeType(type) {
 }
 
 /**
+ * Detect if symbol is an F&O instrument and extract metadata
+ * Returns: { segment, instrumentType, optionType, strikePrice, contractExpiry, baseSymbol }
+ */
+function detectFnOInstrument(symbol) {
+  const result = {
+    segment: 'equity',
+    instrumentType: 'stock',
+    optionType: null,
+    strikePrice: null,
+    contractExpiry: null,
+    baseSymbol: symbol
+  };
+
+  if (!symbol) return result;
+
+  const upperSymbol = symbol.toUpperCase();
+
+  // Pattern for Futures: NIFTY24MAYFUT, BANKNIFTY24JUN27FUT, RELIANCE24JUNFUT
+  const futuresPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{0,2})FUT$/i;
+  const futuresMatch = upperSymbol.match(futuresPattern);
+  if (futuresMatch) {
+    const [, base, year, month, day] = futuresMatch;
+    result.segment = 'fno';
+    result.instrumentType = 'futures';
+    result.baseSymbol = base;
+    result.contractExpiry = parseExpiryDate(year, month, day);
+    return result;
+  }
+
+  // Pattern for Options: NIFTY2450022000CE, BANKNIFTY24MAY48000PE
+  // Format: SYMBOL + YY + MMM/MMMDD + STRIKE + CE/PE
+  const optionsPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{0,2})(\d+)(CE|PE)$/i;
+  const optionsMatch = upperSymbol.match(optionsPattern);
+  if (optionsMatch) {
+    const [, base, year, month, day, strike, optType] = optionsMatch;
+    result.segment = 'fno';
+    result.instrumentType = 'options';
+    result.baseSymbol = base;
+    result.strikePrice = parseFloat(strike);
+    result.optionType = optType.toUpperCase();
+    result.contractExpiry = parseExpiryDate(year, month, day);
+    return result;
+  }
+
+  // Alternative pattern for weekly options: NIFTY24MAR2822000CE
+  const weeklyPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)$/i;
+  const weeklyMatch = upperSymbol.match(weeklyPattern);
+  if (weeklyMatch) {
+    const [, base, year, month, day, strike, optType] = weeklyMatch;
+    result.segment = 'fno';
+    result.instrumentType = 'options';
+    result.baseSymbol = base;
+    result.strikePrice = parseFloat(strike);
+    result.optionType = optType.toUpperCase();
+    result.contractExpiry = parseExpiryDate(year, month, day);
+    return result;
+  }
+
+  // Check for index instruments (NIFTY, BANKNIFTY, FINNIFTY, etc.)
+  const indexSymbols = ['NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX'];
+  if (indexSymbols.includes(upperSymbol)) {
+    result.instrumentType = 'index';
+  }
+
+  return result;
+}
+
+/**
+ * Parse expiry date from year, month, and optional day
+ */
+function parseExpiryDate(year, month, day) {
+  const months = {
+    'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+    'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+  };
+  
+  const fullYear = 2000 + parseInt(year);
+  const monthIndex = months[month.toUpperCase()] || 0;
+  const dayOfMonth = day ? parseInt(day) : getLastThursday(fullYear, monthIndex);
+  
+  return new Date(fullYear, monthIndex, dayOfMonth);
+}
+
+/**
+ * Get the last Thursday of a month (typical F&O expiry)
+ */
+function getLastThursday(year, month) {
+  const lastDay = new Date(year, month + 1, 0);
+  const dayOfWeek = lastDay.getDay();
+  const diff = (dayOfWeek >= 4) ? (dayOfWeek - 4) : (dayOfWeek + 3);
+  return lastDay.getDate() - diff;
+}
+
+/**
  * Parse Zerodha tradebook CSV
  */
 function parseZerodhaTradebook(headers, rows) {
@@ -235,6 +329,9 @@ function matchExecutionsToTrades(executions) {
         const matchQty = Math.min(buy.quantity, remainingSellQty);
         
         if (matchQty > 0) {
+          // Detect F&O instrument metadata
+          const fnoInfo = detectFnOInstrument(symbol);
+          
           // Create a trade
           trades.push({
             symbol,
@@ -244,14 +341,22 @@ function matchExecutionsToTrades(executions) {
             direction: 'long', // Buy then sell = long position
             tradeDate: buy.date,
             exitDate: sell.date,
+            exitTime: sell.date,
+            entryTime: buy.date,
             exchange: buy.exchange,
-            assetType: 'stock',
+            assetType: fnoInfo.segment === 'fno' ? 'stock' : 'stock',
+            segment: fnoInfo.segment,
+            instrumentType: fnoInfo.instrumentType,
+            optionType: fnoInfo.optionType,
+            strikePrice: fnoInfo.strikePrice,
+            contractExpiry: fnoInfo.contractExpiry,
             source: 'csv_import',
             brokerData: {
               entryOrderId: buy.orderId,
               exitOrderId: sell.orderId,
               entryTradeId: buy.tradeId,
-              exitTradeId: sell.tradeId
+              exitTradeId: sell.tradeId,
+              exchange: buy.exchange
             }
           });
           
@@ -266,6 +371,7 @@ function matchExecutionsToTrades(executions) {
       
       // If we couldn't match all sells, this might be a short position
       if (remainingSellQty > 0) {
+        const fnoInfo = detectFnOInstrument(symbol);
         // For now, treat unmatched sells as potential short positions (open)
         openPositions.push({
           symbol,
@@ -273,8 +379,14 @@ function matchExecutionsToTrades(executions) {
           quantity: remainingSellQty,
           direction: 'short',
           tradeDate: sell.date,
+          entryTime: sell.date,
           exchange: sell.exchange,
           assetType: 'stock',
+          segment: fnoInfo.segment,
+          instrumentType: fnoInfo.instrumentType,
+          optionType: fnoInfo.optionType,
+          strikePrice: fnoInfo.strikePrice,
+          contractExpiry: fnoInfo.contractExpiry,
           result: 'open',
           source: 'csv_import',
           notes: 'Short position - no matching buy found'
@@ -285,14 +397,21 @@ function matchExecutionsToTrades(executions) {
     // Remaining buys are open positions
     buyQueue.forEach(buy => {
       if (buy.quantity > 0) {
+        const fnoInfo = detectFnOInstrument(symbol);
         openPositions.push({
           symbol,
           entryPrice: buy.price,
           quantity: buy.quantity,
           direction: 'long',
           tradeDate: buy.date,
+          entryTime: buy.date,
           exchange: buy.exchange,
           assetType: 'stock',
+          segment: fnoInfo.segment,
+          instrumentType: fnoInfo.instrumentType,
+          optionType: fnoInfo.optionType,
+          strikePrice: fnoInfo.strikePrice,
+          contractExpiry: fnoInfo.contractExpiry,
           result: 'open',
           source: 'csv_import',
           notes: 'Open position - no exit found'
@@ -395,5 +514,6 @@ module.exports = {
   importFromCSV,
   validateCSV,
   parseCSV,
+  detectFnOInstrument,
   SUPPORTED_BROKERS
 };

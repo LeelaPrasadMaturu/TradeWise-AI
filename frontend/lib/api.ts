@@ -11,6 +11,9 @@ import type {
   AuthResponse,
   UserTradingConfig,
   User,
+  TaxReport,
+  FlashbackWarning,
+  GamePlan,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -276,6 +279,90 @@ class ApiClient {
   // User Profile
   async getProfile(): Promise<User> {
     return this.request<User>('/auth/profile');
+  }
+
+  // Tax Reports
+  async getTaxReport(fy?: string): Promise<TaxReport> {
+    const query = fy ? `?fy=${fy}` : '';
+    return this.request<TaxReport>(`/reports/tax${query}`);
+  }
+
+  async exportTaxReport(fy: string, format: 'csv' | 'pdf' = 'csv'): Promise<string> {
+    const response = await fetch(
+      `${API_BASE_URL}/reports/tax/export?fy=${fy}&format=${format}`,
+      {
+        headers: {
+          Authorization: `Bearer ${this.getToken()}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error('Export failed');
+    return response.text();
+  }
+
+  async getCapitalGainsSummary(fy?: string): Promise<TaxReport['summary']> {
+    const query = fy ? `?fy=${fy}` : '';
+    return this.request(`/reports/capital-gains${query}`);
+  }
+
+  async getFnOTurnover(fy?: string): Promise<{
+    financialYear: string;
+    turnoverCalculation: {
+      totalTurnover: number;
+      futures: { absolutePnLSum: number; trades: number };
+      options: { absolutePnLSum: number; trades: number };
+    };
+    profitAndLoss: {
+      grossPnL: number;
+      charges: number;
+      netPnL: number;
+      profitPercentage: string;
+    };
+    taxAudit: {
+      required: boolean;
+      reason: string | null;
+    };
+  }> {
+    const query = fy ? `?fy=${fy}` : '';
+    return this.request(`/reports/fno-turnover${query}`);
+  }
+
+  async getAvailableFYs(): Promise<{ years: string[]; current: string }> {
+    return this.request('/reports/available-years');
+  }
+
+  // Flashback Warnings
+  async getFlashback(params?: {
+    symbol?: string;
+    hour?: number;
+    emotion?: string;
+  }): Promise<{
+    hasWarnings: boolean;
+    highSeverityCount: number;
+    mediumSeverityCount: number;
+    lowSeverityCount: number;
+    topWarning: FlashbackWarning | null;
+    warnings: FlashbackWarning[];
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.symbol) searchParams.append('symbol', params.symbol);
+    if (params?.hour !== undefined) searchParams.append('hour', String(params.hour));
+    if (params?.emotion) searchParams.append('emotion', params.emotion);
+    const query = searchParams.toString();
+    return this.request(`/coach/flashback${query ? `?${query}` : ''}`);
+  }
+
+  // Enhanced Game Plan
+  async getGamePlan(): Promise<{
+    success: boolean;
+    briefing: PreMarketBriefing;
+    gamePlan: GamePlan;
+    flashbackSummary: {
+      hasWarnings: boolean;
+      highSeverityCount: number;
+    };
+  }> {
+    return this.request('/coach/game-plan');
   }
 }
 

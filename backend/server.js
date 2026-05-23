@@ -22,6 +22,7 @@ const behavioralRoutes = require('./routes/behavioralRoutes');
 const rulesRoutes = require('./routes/rulesRoutes');
 const disciplineRoutes = require('./routes/disciplineRoutes');
 const coachRoutes = require('./routes/coachRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Import scheduler
 const { initScheduler } = require('./services/schedulerService');
@@ -84,6 +85,7 @@ app.use(`${constants.API_PREFIX}/behavioral`, writeLimiter, behavioralRoutes);
 app.use(`${constants.API_PREFIX}/rules`, writeLimiter, rulesRoutes);
 app.use(`${constants.API_PREFIX}/discipline`, writeLimiter, disciplineRoutes);
 app.use(`${constants.API_PREFIX}/coach`, writeLimiter, coachRoutes);
+app.use(`${constants.API_PREFIX}/reports`, writeLimiter, reportRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

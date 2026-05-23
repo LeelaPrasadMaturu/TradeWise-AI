@@ -16,6 +16,46 @@ const tradeSchema = new mongoose.Schema({
     enum: ['stock', 'crypto', 'forex', 'commodity'],
     default: 'stock'
   },
+  // Tax-related fields
+  segment: {
+    type: String,
+    enum: ['equity', 'fno', 'currency', 'commodity'],
+    default: 'equity'
+  },
+  instrumentType: {
+    type: String,
+    enum: ['stock', 'futures', 'options', 'index'],
+    default: 'stock'
+  },
+  contractExpiry: {
+    type: Date
+  },
+  optionType: {
+    type: String,
+    enum: ['CE', 'PE']
+  },
+  strikePrice: {
+    type: Number
+  },
+  exchange: {
+    type: String,
+    trim: true
+  },
+  exitDate: {
+    type: Date
+  },
+  charges: {
+    brokerage: { type: Number, default: 0 },
+    stt: { type: Number, default: 0 },
+    stampDuty: { type: Number, default: 0 },
+    exchangeCharges: { type: Number, default: 0 },
+    gst: { type: Number, default: 0 },
+    sebiCharges: { type: Number, default: 0 },
+    totalCharges: { type: Number, default: 0 }
+  },
+  netProfitLoss: {
+    type: Number
+  },
   entryPrice: {
     type: Number,
     required: true
@@ -184,6 +224,9 @@ tradeSchema.index({ user: 1, result: 1, entryTime: -1 });
 // Discipline tracking indexes
 tradeSchema.index({ user: 1, disciplineScore: 1 });
 tradeSchema.index({ user: 1, ruleCheck: 1 });
+// Tax and reporting indexes
+tradeSchema.index({ user: 1, segment: 1, tradeDate: -1 });
+tradeSchema.index({ user: 1, exitDate: -1 });
 
 // Virtual for R:R ratio
 tradeSchema.virtual('riskRewardRatio').get(function() {
@@ -205,13 +248,38 @@ tradeSchema.virtual('holdDurationMinutes').get(function() {
   return (this.exitTime - this.entryTime) / (1000 * 60);
 });
 
-// Pre-save hook to auto-calculate positionValue
+// Virtual for hold duration in days (for STCG/LTCG classification)
+tradeSchema.virtual('holdDurationDays').get(function() {
+  const exitDt = this.exitDate || this.exitTime;
+  const entryDt = this.tradeDate || this.entryTime;
+  if (!exitDt || !entryDt) return null;
+  return Math.floor((new Date(exitDt) - new Date(entryDt)) / (1000 * 60 * 60 * 24));
+});
+
+// Virtual to check if trade qualifies for LTCG (held > 365 days)
+tradeSchema.virtual('isLongTerm').get(function() {
+  const holdDays = this.holdDurationDays;
+  if (holdDays === null) return false;
+  return holdDays > 365;
+});
+
+// Pre-save hook to auto-calculate positionValue, netProfitLoss, and exitDate
 tradeSchema.pre('save', function(next) {
   if (!this.positionValue && this.entryPrice && this.quantity) {
     this.positionValue = this.entryPrice * this.quantity;
   }
   if (!this.entryTime && this.tradeDate) {
     this.entryTime = this.tradeDate;
+  }
+  // Auto-calculate exitDate from exitTime if not set
+  if (this.exitTime && !this.exitDate) {
+    this.exitDate = new Date(this.exitTime);
+  }
+  // Auto-calculate netProfitLoss (profitLoss - totalCharges)
+  if (this.profitLoss !== undefined && this.charges && this.charges.totalCharges !== undefined) {
+    this.netProfitLoss = this.profitLoss - this.charges.totalCharges;
+  } else if (this.profitLoss !== undefined && !this.netProfitLoss) {
+    this.netProfitLoss = this.profitLoss;
   }
   next();
 });

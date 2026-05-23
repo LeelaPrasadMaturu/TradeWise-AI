@@ -223,3 +223,109 @@ export interface UserTradingConfig {
   blockedEmotions: string[];
   customChecklistItems: ChecklistItem[];
 }
+
+// Tax Report Types
+export interface TradeSummary {
+  _id: string;
+  symbol: string;
+  direction: string;
+  entryDate: string;
+  exitDate: string;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  pnl: number;
+  charges: number;
+  netPnl: number;
+  result: string;
+  exchange?: string;
+  segment: string;
+  instrumentType: string;
+  optionType?: string;
+  strikePrice?: number;
+  gainType?: string;
+}
+
+export interface TaxCategory {
+  trades: TradeSummary[];
+  totalPnL: number;
+  totalCharges: number;
+  netPnL: number;
+  tradeCount: number;
+  wins?: number;
+  losses?: number;
+  turnover?: number;
+}
+
+export interface TaxReport {
+  financialYear: string;
+  generatedAt: string;
+  dateRange: {
+    start: string;
+    end: string;
+  };
+  equity: {
+    stcg: TaxCategory;
+    ltcg: TaxCategory;
+  };
+  fno: {
+    futures: TaxCategory;
+    options: TaxCategory;
+    totalTurnover: number;
+    totalNetPnL: number;
+    totalCharges: number;
+    tradeCount: number;
+  };
+  summary: {
+    totalPnL: number;
+    totalCharges: number;
+    netPnL: number;
+    totalTradeCount: number;
+    equityTradeCount: number;
+    fnoTradeCount: number;
+  };
+  byMonth: Record<string, { pnl: number; charges: number; trades: number }>;
+  topSymbols: Array<{
+    symbol: string;
+    pnl: number;
+    charges: number;
+    trades: number;
+    segment: string;
+    instrumentType: string;
+  }>;
+}
+
+// Flashback Warning Types
+export interface FlashbackWarning {
+  type: string;
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  message: string;
+  detail?: string;
+  data?: Record<string, unknown>;
+  recentTrades?: Array<{
+    date: string;
+    pnl: number;
+    reason?: string;
+  }>;
+}
+
+// Game Plan Types
+export interface GamePlanItem {
+  reason?: string;
+  type?: string;
+  message: string;
+  detail?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface GamePlan {
+  avoid: GamePlanItem[];
+  focus: GamePlanItem[];
+  rules: Array<{
+    type: string;
+    message: string;
+    rules?: string[];
+  }>;
+  warnings?: FlashbackWarning[];
+}

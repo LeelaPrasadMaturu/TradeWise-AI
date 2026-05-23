@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
+import { QuickEntryFAB } from '@/components/mobile/quick-entry-fab';
 import api from '@/lib/api';
 
 export default function DashboardLayout({
@@ -31,6 +32,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      <QuickEntryFAB />
     </div>
   );
 }

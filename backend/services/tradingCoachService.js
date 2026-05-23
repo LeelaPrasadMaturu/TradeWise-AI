@@ -414,7 +414,7 @@ async function getDayOfWeekWarning(userId) {
   
   const todayPerf = baseline.dailyPerformance.find(d => d.dayOfWeek === dayOfWeek);
   
-  if (!todayPerf || todayPerf.trades < 5) {
+  if (!todayPerf || (todayPerf.tradeCount || todayPerf.trades || 0) < 5) {
     return null;
   }
   
@@ -485,12 +485,33 @@ async function generatePreMarketBriefing(userId) {
       getDayOfWeekWarning(userId)
     ]);
     
-    // Get best hours
+    // Get best hours (fix: use tradeCount instead of trades)
     const bestHours = baseline?.hourlyPerformance
-      ?.filter(h => h.trades >= 5)
+      ?.filter(h => (h.tradeCount || h.trades || 0) >= 5)
       ?.sort((a, b) => b.winRate - a.winRate)
       ?.slice(0, 3)
-      ?.map(h => ({ hour: h.hour, winRate: Math.round(h.winRate) })) || [];
+      ?.map(h => ({ hour: h.hour, winRate: Math.round(h.winRate), pnl: h.totalPnL || 0 })) || [];
+    
+    // Get worst hours to avoid
+    const worstHours = baseline?.hourlyPerformance
+      ?.filter(h => (h.tradeCount || h.trades || 0) >= 5)
+      ?.sort((a, b) => a.winRate - b.winRate)
+      ?.slice(0, 2)
+      ?.filter(h => h.winRate < (baseline.baselineWinRate || 50) - 15)
+      ?.map(h => ({ hour: h.hour, winRate: Math.round(h.winRate), pnl: h.totalPnL || 0 })) || [];
+    
+    // Get best and worst symbols
+    const bestSymbols = baseline?.symbolPerformance
+      ?.filter(s => (s.tradeCount || 0) >= 5 && s.winRate > (baseline.baselineWinRate || 50))
+      ?.sort((a, b) => b.totalPnL - a.totalPnL)
+      ?.slice(0, 3)
+      ?.map(s => ({ symbol: s.symbol, winRate: Math.round(s.winRate), pnl: s.totalPnL })) || [];
+    
+    const worstSymbols = baseline?.symbolPerformance
+      ?.filter(s => (s.tradeCount || 0) >= 5 && s.totalPnL < 0)
+      ?.sort((a, b) => a.totalPnL - b.totalPnL)
+      ?.slice(0, 2)
+      ?.map(s => ({ symbol: s.symbol, winRate: Math.round(s.winRate), pnl: s.totalPnL })) || [];
     
     // Get AI-generated focus areas
     const focusAreas = await generateAIFocusAreas(userId, yesterdaySummary, baseline);
@@ -529,7 +550,49 @@ async function generatePreMarketBriefing(userId) {
       
       tradingStyle: baseline?.tradingStyle || 'UNKNOWN',
       
-      motivationalMessage: getMotivationalMessage(yesterdaySummary)
+      motivationalMessage: getMotivationalMessage(yesterdaySummary),
+      
+      // Enhanced game plan section
+      gamePlan: {
+        avoid: [
+          ...(worstHours.map(h => ({
+            reason: 'TIME',
+            message: `Avoid trading at ${h.hour}:00 (${h.winRate}% win rate, ${h.pnl >= 0 ? '+' : ''}₹${h.pnl.toFixed(0)} P&L)`,
+            data: h
+          }))),
+          ...(worstSymbols.map(s => ({
+            reason: 'SYMBOL',
+            message: `Consider avoiding ${s.symbol} (${s.winRate}% win rate, ₹${s.pnl.toFixed(0)} P&L)`,
+            data: s
+          }))),
+          ...(dayWarning ? [{
+            reason: 'DAY',
+            message: dayWarning.warning,
+            data: dayWarning
+          }] : [])
+        ],
+        focus: [
+          ...(bestHours.map(h => ({
+            type: 'BEST_HOUR',
+            message: `Trade at ${h.hour}:00 - your strongest hour (${h.winRate}% win rate)`,
+            data: h
+          }))),
+          ...(bestSymbols.map(s => ({
+            type: 'BEST_SYMBOL',
+            message: `${s.symbol} is profitable for you (${s.winRate}% win rate, +₹${s.pnl.toFixed(0)})`,
+            data: s
+          }))),
+          ...focusAreas.map(area => ({
+            type: 'AI_FOCUS',
+            message: area
+          }))
+        ],
+        rules: yesterdaySummary.violations.length > 0 ? [{
+          type: 'VIOLATED_YESTERDAY',
+          message: `Focus on: ${[...new Set(yesterdaySummary.violations.map(v => v.ruleName))].join(', ')}`,
+          rules: [...new Set(yesterdaySummary.violations.map(v => v.ruleName))]
+        }] : []
+      }
     };
     
     return briefing;

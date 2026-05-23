@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TradeCard } from './trade-card';
 import { Trade } from '@/types';
 import { formatCurrency, formatDate, cn, getPnLColor, truncateText } from '@/lib/utils';
 import api from '@/lib/api';
@@ -102,7 +103,19 @@ export function TradeTable({
 
   return (
     <>
-      <div className="rounded-md border border-border/50">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {trades.map((trade) => (
+          <TradeCard
+            key={trade._id}
+            trade={trade}
+            onDelete={(t) => setDeleteTradeId(t._id)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-md border border-border/50">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

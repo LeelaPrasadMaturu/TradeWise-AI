@@ -16,6 +16,7 @@ const {
   SEVERITY
 } = require('../services/tradingCoachService');
 const { triggerBriefingManually, getSchedulerStatus } = require('../services/schedulerService');
+const { getFlashbackWarnings, getFlashbackSummary } = require('../services/mistakeFlashbackService');
 
 /**
  * GET /api/coach/briefing
@@ -228,6 +229,120 @@ router.get('/alert-types', auth, async (req, res) => {
       key
     }))
   });
+});
+
+/**
+ * GET /api/coach/flashback
+ * Get mistake flashback warnings based on context
+ * Query params: symbol, hour, emotion
+ */
+router.get('/flashback', auth, async (req, res) => {
+  try {
+    const { symbol, hour, emotion } = req.query;
+    
+    const context = {
+      symbol: symbol || undefined,
+      currentHour: hour !== undefined ? parseInt(hour) : undefined,
+      emotion: emotion || undefined
+    };
+    
+    const result = await getFlashbackSummary(req.user._id, context);
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error getting flashback warnings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get flashback warnings'
+    });
+  }
+});
+
+/**
+ * GET /api/coach/game-plan
+ * Get enhanced pre-market game plan with behavioral recommendations
+ */
+router.get('/game-plan', auth, async (req, res) => {
+  try {
+    const briefing = await generatePreMarketBriefing(req.user._id);
+    const flashback = await getFlashbackSummary(req.user._id, {});
+    
+    // Build game plan from briefing and flashback data
+    const gamePlan = {
+      avoid: [],
+      focus: [],
+      rules: [],
+      warnings: flashback.warnings.filter(w => w.severity === 'high').slice(0, 3)
+    };
+    
+    // Add time-based avoidance
+    const badHourWarning = flashback.warnings.find(w => w.type === 'BAD_HOUR');
+    if (badHourWarning) {
+      gamePlan.avoid.push({
+        reason: 'TIME',
+        message: badHourWarning.message,
+        data: badHourWarning.data
+      });
+    }
+    
+    // Add day-based avoidance
+    const badDayWarning = flashback.warnings.find(w => w.type === 'BAD_DAY');
+    if (badDayWarning) {
+      gamePlan.avoid.push({
+        reason: 'DAY',
+        message: badDayWarning.message,
+        data: badDayWarning.data
+      });
+    }
+    
+    // Add loss streak warning
+    const lossStreakWarning = flashback.warnings.find(w => w.type === 'LOSS_STREAK');
+    if (lossStreakWarning) {
+      gamePlan.avoid.push({
+        reason: 'PATTERN',
+        message: lossStreakWarning.message,
+        detail: lossStreakWarning.detail
+      });
+    }
+    
+    // Add best hours from briefing
+    if (briefing.bestHours && briefing.bestHours.length > 0) {
+      gamePlan.focus.push({
+        type: 'BEST_HOURS',
+        message: `Best trading hours: ${briefing.bestHours.map(h => `${h.hour}:00`).join(', ')}`,
+        data: briefing.bestHours
+      });
+    }
+    
+    // Add focus areas from AI
+    if (briefing.focusAreas && briefing.focusAreas.length > 0) {
+      briefing.focusAreas.forEach(area => {
+        gamePlan.focus.push({
+          type: 'AI_FOCUS',
+          message: area
+        });
+      });
+    }
+    
+    res.json({
+      success: true,
+      briefing,
+      gamePlan,
+      flashbackSummary: {
+        hasWarnings: flashback.hasWarnings,
+        highSeverityCount: flashback.highSeverityCount
+      }
+    });
+  } catch (error) {
+    console.error('Error generating game plan:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate game plan'
+    });
+  }
 });
 
 module.exports = router;

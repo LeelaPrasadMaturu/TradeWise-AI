@@ -59,9 +59,11 @@ const emotions = [
 
 interface TradeFormProps {
   editTrade?: Trade;
+  onSymbolChange?: (symbol: string) => void;
+  onEmotionChange?: (emotion: string) => void;
 }
 
-export function TradeForm({ editTrade }: TradeFormProps) {
+export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [tags, setTags] = useState<string[]>(editTrade?.tags || []);
@@ -221,7 +223,9 @@ export function TradeForm({ editTrade }: TradeFormProps) {
               <Input
                 id="symbol"
                 placeholder="RELIANCE"
-                {...register('symbol')}
+                {...register('symbol', {
+                  onBlur: (e) => onSymbolChange?.(e.target.value?.toUpperCase()),
+                })}
                 className={errors.symbol ? 'border-destructive' : ''}
               />
               {errors.symbol && (
@@ -396,7 +400,10 @@ export function TradeForm({ editTrade }: TradeFormProps) {
                   type="button"
                   variant={watch('preTradeEmotion') === emotion.value ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setValue('preTradeEmotion', emotion.value)}
+                  onClick={() => {
+                    setValue('preTradeEmotion', emotion.value);
+                    onEmotionChange?.(emotion.value);
+                  }}
                   className={cn(
                     watch('preTradeEmotion') === emotion.value && 'bg-primary'
                   )}
