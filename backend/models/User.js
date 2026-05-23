@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema({
     telegram: { type: Boolean, default: false },
     sms: { type: Boolean, default: false }
   },
+  coachingPreferences: {
+    enableRealTimeAlerts: { type: Boolean, default: true },
+    enablePreMarketBriefing: { type: Boolean, default: true },
+    briefingTime: { type: String, default: '08:30' },
+    timezone: { type: String, default: 'Asia/Kolkata' }
+  },
   tradeTags: [{
     type: String,
     trim: true

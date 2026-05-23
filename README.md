@@ -22,6 +22,38 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - **Performance Analytics**: Win rate, profit/loss analysis, and statistics by strategy
 - **Emotional Intelligence**: Track how emotions affect your trading decisions
 - **Strategy Analysis**: Identify which strategies work best for you
+- **CSV Import**: Import trades directly from Zerodha and other brokers
+
+### 🧠 Behavioral Pattern Detection
+- **Auto-Detected Trading Style**: System identifies if you're a scalper, intraday, swing, or positional trader
+- **15+ Pattern Detectors**: Revenge trading, tilt streaks, overtrading, position sizing drift, time-of-day bias, and more
+- **Style-Adaptive Thresholds**: Detection thresholds adjust based on YOUR trading style (10 min revenge window for scalpers vs 2 hours for intraday)
+- **Cost Attribution**: See how much each behavioral pattern costs you in real money
+- **Positive Pattern Recognition**: Get credit for consistent sizing, stop-loss discipline, and emotional neutrality
+- **Real-Time Warnings**: Get warned about revenge trading or tilt before entering a trade
+
+### 📋 Discipline Score & Pre-Trade Checklist
+- **Custom Trading Rules**: Define your own rules (time windows, max trades per day, position limits, R:R requirements)
+- **Pre-Trade Validation**: System checks trades against your rules before entry - can warn or block violations
+- **11 Rule Types**: TIME_WINDOW, MAX_DAILY_TRADES, MAX_POSITION_SIZE, MAX_DAILY_LOSS, MIN_RISK_REWARD, and more
+- **Custom Checklist Items**: Add your own pre-trade questions ("Is this in my playbook?")
+- **Emotional State Tracking**: Track and optionally restrict trading based on emotional state
+- **Discipline Score**: Weekly score (0-100) tracking your rule compliance
+- **Win Rate Correlation**: See how following rules correlates with your win rate
+- **Rule Templates**: Pre-built rule sets for Conservative Intraday, Aggressive Scalper, and Swing Trading styles
+
+### 🎯 Real-Time Trading Coach
+- **Proactive Alerts**: Get warned during trading when patterns emerge
+  - "You've taken 4 trades today. Your win rate drops after trade #3"
+  - "Last 2 trades were losses. Consider taking a break"
+  - "You're trading outside your best hours (10-11 AM)"
+- **Pre-Market Briefing**: Daily email at 8:30 AM IST with:
+  - Yesterday's performance summary
+  - Rules violated yesterday
+  - Your best trading hours today
+  - Day-of-week warning ("You tend to struggle on Mondays")
+  - AI-generated focus areas for the day
+- **5 Alert Types**: TRADE_COUNT, LOSS_STREAK, BAD_HOUR, REVENGE_RISK, TILT_WARNING
 
 ### 🔒 Security & Quality
 - **Secure Authentication**: JWT-based authentication with bcrypt password hashing
@@ -273,13 +305,48 @@ Create a new trade entry.
   "stopLoss": 145.00,
   "takeProfit": 160.00,
   "reason": "Strong breakout with high volume",
-  "tags": ["breakout", "volume"]
+  "tags": ["breakout", "volume"],
+  "preTradeEmotion": "calm",
+  "checklistResponses": [
+    { "itemId": "abc123", "response": true },
+    { "question": "Is this in my playbook?", "response": true }
+  ]
 }
 ```
 The system will automatically:
+- **Run pre-trade validation** against your trading rules (if enabled)
+- **Block the trade** if it violates any blocking rules
 - Analyze the trade reason for emotional content using FinBERT
 - Extract relevant trading strategy tags
 - Combine them with user-provided tags
+- **Calculate discipline score** and track rule compliance
+
+If trade is blocked (HTTP 403):
+```json
+{
+  "blocked": true,
+  "message": "Trade blocked by your trading rules",
+  "violations": ["Daily loss limit reached: ₹5,000 lost today"],
+  "warnings": ["This is your 4th trade today"],
+  "score": 45
+}
+```
+
+If trade is allowed with warnings:
+```json
+{
+  "...trade data...",
+  "disciplineScore": 85,
+  "rulesViolated": ["MAX_DAILY_TRADES"],
+  "ruleValidation": {
+    "score": 85,
+    "warnings": ["This is your 4th trade today (limit: 3)"],
+    "summary": { "totalRules": 5, "passed": 4, "warnings": 1, "blocks": 0 }
+  }
+}
+```
+
+Use `skipValidation: true` to bypass rule checking for imported or historical trades.
 
 Emotion labels stored under `emotionAnalysis.detected` use FinBERT outcomes: `positive`, `negative`, `neutral`.
 
@@ -477,6 +544,375 @@ Stop background price monitoring.
 - Triggered alerts count
 - Cancelled alerts count
 
+### Import Routes (CSV Trade Import)
+
+#### GET /api/import/supported-brokers
+Get list of supported broker formats and their expected CSV columns.
+
+#### GET /api/import/sample-csv
+Download a sample CSV template.
+Query Parameters:
+- `broker`: "zerodha" or "generic" (default: "zerodha")
+
+#### POST /api/import/csv/validate
+Validate CSV before import (dry run). Returns preview of trades that would be imported.
+```json
+{
+  "csv": "trade_date,exchange,symbol,trade_type,quantity,price\n2024-03-15,NSE,RELIANCE,buy,10,2450.50",
+  "broker": "auto"
+}
+```
+
+#### POST /api/import/csv
+Import trades from broker CSV export.
+```json
+{
+  "csv": "<CSV content as string>",
+  "broker": "auto",
+  "includeOpen": true,
+  "skipDuplicates": true
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Successfully imported 5 trades",
+  "broker": "zerodha",
+  "summary": {
+    "totalExecutions": 12,
+    "parsedExecutions": 12,
+    "completedTrades": 5,
+    "openPositions": 2,
+    "imported": 7,
+    "skipped": 0
+  },
+  "importedTrades": [...]
+}
+```
+
+**Supported Brokers:**
+- **Zerodha**: Direct import from Kite/Console tradebook CSV
+- **Generic**: Any CSV with columns: date, symbol, type (buy/sell), quantity, price
+
+See [samples/README.md](./samples/README.md) for detailed CSV format documentation.
+
+### Behavioral Analysis Routes
+
+#### GET /api/behavioral/patterns
+Get all detected behavioral patterns for the authenticated user.
+Query Parameters:
+- `period`: Analysis period (7d, 14d, 30d, 60d, 90d) - default: 30d
+- `type`: Filter by pattern type
+- `severity`: Filter by severity (high, medium, low)
+
+Response includes behavioral score, detected patterns, and recommendations.
+
+#### GET /api/behavioral/summary
+Get a quick behavioral health summary.
+```json
+{
+  "behavioralScore": 72,
+  "tradingStyle": "INTRADAY",
+  "topIssues": [
+    {
+      "type": "REVENGE_TRADING",
+      "severity": "high",
+      "insight": "4 revenge trades detected",
+      "costEstimate": -2450
+    }
+  ],
+  "positivePatterns": ["CONSISTENT_SIZING", "STOP_LOSS_DISCIPLINE"],
+  "recommendations": [...]
+}
+```
+
+#### GET /api/behavioral/pattern/:type
+Deep dive into a specific pattern type (e.g., REVENGE_TRADING, TILT_STREAK).
+
+#### GET /api/behavioral/baseline
+Get user's calculated trading baseline metrics including:
+- Trading style (SCALPER, INTRADAY, SWING, POSITIONAL)
+- Average position size, daily trade count, hold duration
+- Best/worst performing hours and days
+- Symbol-level performance
+
+#### POST /api/behavioral/baseline/recalculate
+Force recalculate user baseline from trade history.
+
+#### GET /api/behavioral/style
+Get detected trading style with style-specific thresholds.
+
+#### GET /api/behavioral/supported-patterns
+List all 15 detectable patterns with descriptions.
+
+**Detected Patterns:**
+1. REVENGE_TRADING - Quick re-entry after loss with larger position
+2. TILT_STREAK - Multiple consecutive losses
+3. OVERTRADING - Excessive daily trade frequency
+4. RAPID_FIRE - Multiple trades in short window
+5. POSITION_SIZE_DRIFT_UP - Overconfidence sizing after wins
+6. POSITION_SIZE_DRIFT_DOWN - Fear-based undersizing after losses
+7. POSITION_SIZE_CHAOS - Inconsistent position sizing
+8. TIME_OF_DAY_BIAS - Poor performance at certain hours
+9. DAY_OF_WEEK_BIAS - Poor performance on certain days
+10. SYMBOL_LOSS_CLUSTERING - Repeated losses on same symbol
+11. FIRST_TRADE_SYNDROME - First daily trade underperforms
+12. LOSS_AVERSION - Holding losers longer than winners
+13. NEGATIVE_EMOTION_TRADING - Trading with detected negative sentiment
+14. FOMO_ENTRY - Fear of missing out detected in trade reason
+15. STOP_LOSS_VIOLATION - Not respecting stated stop losses
+
+### Trading Rules Routes
+
+#### GET /api/rules
+Get all trading rules for the authenticated user.
+
+#### POST /api/rules
+Create a new trading rule.
+```json
+{
+  "name": "Morning Session Only",
+  "description": "Only trade during the most liquid morning hours",
+  "ruleType": "TIME_WINDOW",
+  "action": "warn",
+  "params": {
+    "startHour": 9,
+    "startMinute": 30,
+    "endHour": 11,
+    "endMinute": 30
+  }
+}
+```
+
+**Supported Rule Types:**
+| Rule Type | Description | Params |
+|-----------|-------------|--------|
+| TIME_WINDOW | Only trade during specific hours | startHour, startMinute, endHour, endMinute |
+| MAX_DAILY_TRADES | Limit trades per day | maxTrades |
+| MAX_POSITION_SIZE | Cap position size | maxSizeType (percentage/absolute), maxSizeValue |
+| MAX_DAILY_LOSS | Stop after daily loss limit | maxLossType, maxLossValue |
+| MIN_RISK_REWARD | Minimum R:R ratio | minRiskReward |
+| REQUIRED_STOP_LOSS | Must have stop loss | (none) |
+| REQUIRED_TAKE_PROFIT | Must have take profit | (none) |
+| ALLOWED_SYMBOLS | Whitelist symbols | symbols[] |
+| BLOCKED_SYMBOLS | Blacklist symbols | symbols[] |
+| MAX_CONSECUTIVE_LOSSES | Stop after loss streak | maxConsecutiveLosses |
+| COOLING_OFF_AFTER_LOSS | Wait after loss | coolingMinutes |
+
+#### PATCH /api/rules/:id
+Update a trading rule.
+
+#### POST /api/rules/:id/toggle
+Enable/disable a rule.
+
+#### DELETE /api/rules/:id
+Delete a trading rule.
+
+#### GET /api/rules/templates
+Get pre-built rule templates (CONSERVATIVE_INTRADAY, AGGRESSIVE_SCALPER, SWING_TRADER).
+
+#### POST /api/rules/templates/:templateName/apply
+Apply a rule template to your account.
+
+#### POST /api/rules/validate
+Pre-trade validation - check if a trade would pass all rules before entry.
+```json
+{
+  "symbol": "RELIANCE",
+  "entryPrice": 2450.50,
+  "quantity": 10,
+  "direction": "long",
+  "stopLoss": 2400,
+  "takeProfit": 2550,
+  "reason": "Strong breakout",
+  "preTradeEmotion": "calm",
+  "checklistResponses": [
+    { "itemId": "abc123", "response": true }
+  ]
+}
+```
+
+Response:
+```json
+{
+  "allowed": true,
+  "score": 85,
+  "summary": {
+    "totalRules": 5,
+    "passed": 4,
+    "warnings": 1,
+    "blocks": 0
+  },
+  "warnings": ["This is your 4th trade today (limit: 3)"],
+  "blockReasons": []
+}
+```
+
+### Trading Config Routes
+
+#### GET /api/rules/config/settings
+Get user's trading configuration (capital, checklist settings, emotional preferences).
+
+#### PATCH /api/rules/config/settings
+Update trading configuration.
+```json
+{
+  "checklistEnabled": true,
+  "blockOnFailure": true,
+  "requireEmotionalCheck": true,
+  "allowedEmotions": ["calm", "neutral", "confident"],
+  "blockedEmotions": ["revenge", "fomo", "frustrated"]
+}
+```
+
+#### PATCH /api/rules/config/capital
+Update trading capital (for percentage-based rules).
+```json
+{
+  "capital": 500000,
+  "note": "Monthly capital update"
+}
+```
+
+#### POST /api/rules/config/checklist/items
+Add a custom checklist item.
+```json
+{
+  "question": "Is this setup in my trading playbook?",
+  "required": true,
+  "action": "warn"
+}
+```
+
+#### DELETE /api/rules/config/checklist/items/:itemId
+Remove a custom checklist item.
+
+### Discipline Score Routes
+
+#### GET /api/discipline/score
+Get current discipline score (default: last 7 days).
+
+#### GET /api/discipline/score/:period
+Get discipline score for specific period (7d, 30d, 90d).
+
+#### GET /api/discipline/weekly-report
+Get comprehensive weekly discipline report.
+```json
+{
+  "period": { "start": "2024-03-11", "end": "2024-03-17" },
+  "overallScore": 72,
+  "totalTrades": 15,
+  "compliantTrades": 11,
+  "byRule": [
+    {
+      "ruleName": "Max 3 Trades/Day",
+      "complianceRate": 60,
+      "violations": 2
+    }
+  ],
+  "correlation": {
+    "winRateWhenCompliant": 58.2,
+    "winRateWhenViolating": 33.3,
+    "insight": "You win 25% more when following your rules"
+  },
+  "recommendations": [...]
+}
+```
+
+#### GET /api/discipline/correlation
+Get win rate correlation with compliance.
+
+#### GET /api/discipline/violations
+Get recent rule violations.
+
+#### GET /api/discipline/suggestions
+Get AI-suggested rules based on your trading patterns.
+
+#### GET /api/discipline/summary
+Quick discipline summary for dashboard.
+
+#### GET /api/discipline/blocked
+Get blocked trade attempts.
+
+### Trading Coach Routes
+
+#### GET /api/coach/briefing
+Get today's pre-market briefing on-demand.
+```json
+{
+  "greeting": "Good morning",
+  "yesterdaySummary": {
+    "tradeCount": 5,
+    "wins": 3,
+    "losses": 2,
+    "winRate": 60,
+    "pnl": 1250.50,
+    "message": "3W/2L (60% win rate)"
+  },
+  "rulesViolated": {
+    "count": 2,
+    "rules": ["Max 3 Trades/Day", "Morning Session Only"]
+  },
+  "dayOfWeekWarning": {
+    "dayName": "Monday",
+    "winRate": 42,
+    "warning": "You tend to struggle on Mondays (42% win rate vs 55% average)"
+  },
+  "bestHours": {
+    "hours": [{ "hour": 10, "winRate": 68 }, { "hour": 11, "winRate": 62 }],
+    "message": "Your best trading hours: 10:00 (68%), 11:00 (62%)"
+  },
+  "focusAreas": [
+    "Follow your max 3 trades rule today",
+    "Wait for A+ setups only"
+  ]
+}
+```
+
+#### GET /api/coach/alerts
+Get current active coaching alerts.
+```json
+{
+  "alerts": [
+    {
+      "type": "TRADE_COUNT",
+      "severity": "warning",
+      "message": "You've taken 4 trades today. Your win rate drops after trade #3 (45% vs 58% normal)"
+    },
+    {
+      "type": "LOSS_STREAK",
+      "severity": "high",
+      "message": "Last 2 trades were losses. Consider taking a break."
+    }
+  ]
+}
+```
+
+#### POST /api/coach/briefing/send
+Manually trigger briefing email (for testing).
+
+#### GET /api/coach/preferences
+Get user's coaching preferences.
+
+#### PATCH /api/coach/preferences
+Update coaching preferences.
+```json
+{
+  "enableRealTimeAlerts": true,
+  "enablePreMarketBriefing": true,
+  "briefingTime": "08:30",
+  "timezone": "Asia/Kolkata"
+}
+```
+
+#### GET /api/coach/summary/yesterday
+Get yesterday's trading summary.
+
+#### GET /api/coach/day-warning
+Get day-of-week performance warning.
+
 ## Work in Progress Features
 
 ### Enhanced Alert System
@@ -498,10 +934,15 @@ Stop background price monitoring.
 
 - [ ] Custom Strategy Analysis
 
-- [ ] Demat Account Integration
-  - Direct connection with your trading account
-  - Automated trade entry and tracking
-  - Simplified trade logging - just enter your trading rationale
+- [x] **CSV Trade Import** - Import trades directly from broker exports
+  - Zerodha Tradebook CSV support
+  - Generic CSV format support
+  - FIFO trade matching (buy/sell pairing)
+  - Duplicate detection
+  - See [samples/](./samples/) for CSV templates
+
+- [ ] Demat Account Integration (Future)
+  - Direct API connection with your trading account
   - Real-time portfolio synchronization
 
 ### Extended Market Coverage
@@ -524,6 +965,29 @@ Stop background price monitoring.
 - [ ] Spaced repetition algorithm for flashcards
 - [ ] Gamification with achievements and streaks
 
+### Discipline & Rule System
+- [x] **Trading Rules Engine** - Define and enforce your personal trading rules
+- [x] **Pre-Trade Checklist** - Custom checklist items with warn/block actions
+- [x] **Discipline Score** - Track rule compliance with weekly scores
+- [x] **Win Rate Correlation** - See impact of rule-following on performance
+- [x] **Rule Templates** - Pre-built rule sets for different trading styles
+- [x] **Trade Blocking** - Optionally block trades that violate rules
+- [x] **Emotional State Tracking** - Restrict trading based on emotional state
+
+---
+
+## 🗺️ Full Roadmap
+
+For a comprehensive view of planned features and future development, see **[ROADMAP.md](./ROADMAP.md)**.
+
+Key upcoming priorities:
+- **Phase 1**: Web Dashboard & Mobile App
+- **Phase 2**: Zerodha/Broker API Integration (auto-import trades)
+- **Phase 3**: Advanced Analytics (P&L calendar, performance attribution)
+- **Phase 4**: AI Trading Coach Chatbot
+- **Phase 5**: Social Features (accountability partners)
+
+---
 
 ## Additional Insights (from trading logs)
 
@@ -559,15 +1023,36 @@ TradeWise-AI/
 ├── backend/
 │   ├── config/          # Configuration files
 │   ├── middlewares/     # Express middlewares (auth, validation)
-│   ├── models/          # MongoDB models (User, Trade, Alert)
+│   ├── models/          # MongoDB models
+│   │   ├── User.js
+│   │   ├── Trade.js                  # Trade model with behavioral & discipline fields
+│   │   ├── TradeAlert.js
+│   │   ├── UserBaseline.js           # Trading style & baseline metrics
+│   │   ├── TradingRule.js            # User-defined trading rules
+│   │   ├── UserTradingConfig.js      # Trading config & checklist settings
+│   │   └── TradeRuleCheck.js         # Rule validation history
 │   ├── routes/          # API routes
+│   │   ├── importRoutes.js           # CSV import endpoints
+│   │   ├── behavioralRoutes.js       # Behavioral pattern analysis
+│   │   ├── rulesRoutes.js            # Trading rules CRUD & validation
+│   │   ├── disciplineRoutes.js       # Discipline score & reports
+│   │   └── coachRoutes.js            # Real-time coaching & briefings
 │   ├── services/        # Business logic
-│   │   ├── emotionDetectService.js    # FinBERT emotion detection
-│   │   ├── quizFlashcardService.js    # Personalized learning
-│   │   ├── insightsService.js         # Weekly insights
-│   │   ├── postTradeAnalysisService.js # Post-trade AI analysis
-│   │   └── aiExplainService.js        # Cohere explanations
+│   │   ├── behavioralPatternService.js # 15 pattern detection algorithms
+│   │   ├── csvImportService.js       # Broker CSV parsing & trade matching
+│   │   ├── emotionDetectService.js   # FinBERT emotion detection
+│   │   ├── quizFlashcardService.js   # Personalized learning
+│   │   ├── insightsService.js        # Weekly insights + behavioral
+│   │   ├── postTradeAnalysisService.js # Post-trade AI + pattern warnings
+│   │   ├── ruleValidationService.js  # Pre-trade rule validation
+│   │   ├── disciplineScoreService.js # Discipline scoring & analytics
+│   │   ├── tradingCoachService.js    # Real-time alerts & pre-market briefing
+│   │   ├── schedulerService.js       # Cron jobs for daily briefings
+│   │   └── aiExplainService.js       # Cohere explanations
 │   └── server.js        # Express app entry point
+├── samples/             # Sample CSV files for import
+│   ├── zerodha_tradebook_sample.csv
+│   └── README.md        # CSV format documentation
 ├── tests/
 │   ├── unit/            # Unit tests (30 tests)
 │   ├── integration/     # Integration tests (33 tests)
@@ -609,16 +1094,42 @@ Every Sunday → System aggregates week's trades → Gemini analyzes performance
                                             Email sent with insights & recommendations
 ```
 
+### 4. **Discipline & Pre-Trade Checklist**
+```
+User defines rules → System stores rules with thresholds
+                                   ↓
+User enters new trade → Pre-trade validation runs
+                                   ↓
+              ┌────────────────────┴────────────────────┐
+              ↓                                          ↓
+      Rules Pass                                  Rules Violated
+         ↓                                             ↓
+  Trade Created                              ┌─────────┴─────────┐
+  Score = 100                                ↓                   ↓
+         ↓                               Warn Only          Block Action
+  Weekly Score Updated                      ↓                    ↓
+                                    Trade Created           Trade Blocked
+                                    with warnings          403 Response
+                                         ↓                       ↓
+                                   Score Reduced          Saved as blocked attempt
+                                         ↓                for analytics
+                                   Weekly Score Updated
+```
+
 ## 🚀 Key Workflows
 
 ### Complete User Journey
 1. **Register** → Create account with email/password
-2. **Log Trades** → Enter trades with reasons (emotion detected automatically)
-3. **Close Trades** → Add exit data (AI analysis generated automatically)
-4. **Get Insights** → Receive weekly AI-powered insights via email
-5. **Take Quiz** → Test knowledge with personalized questions from YOUR mistakes
-6. **Study Flashcards** → Review lessons learned from YOUR trading history
-7. **Improve** → Apply lessons and see improvement in statistics
+2. **Set Up Rules** → Define trading rules (time windows, position limits, etc.)
+3. **Configure Checklist** → Add custom pre-trade questions
+4. **Log Trades** → Enter trades with pre-trade emotional state and checklist
+5. **Pre-Trade Validation** → System checks rules, warns/blocks violations
+6. **Close Trades** → Add exit data (AI analysis generated automatically)
+7. **Track Discipline** → View weekly discipline score and correlations
+8. **Get Insights** → Receive weekly AI-powered insights via email
+9. **Take Quiz** → Test knowledge with personalized questions from YOUR mistakes
+10. **Study Flashcards** → Review lessons learned from YOUR trading history
+11. **Improve** → Apply lessons and see improvement in statistics and discipline score
 
 ### Example: Learning from FOMO Mistakes
 ```
@@ -627,6 +1138,21 @@ Day 3: Trader enters another FOMO trade → Loses $300 → Pattern identified
 Day 7: Trader requests quiz → Gets questions about FOMO based on actual trades
 Day 10: Trader reviews flashcards → "What led to your $800 in FOMO losses?"
 Day 15: Trader avoids FOMO trade → Sees improvement in weekly insights
+```
+
+### Example: Discipline System in Action
+```
+Setup: Trader creates rules → "Max 3 trades/day" (warn) + "Stop loss required" (block)
+
+Day 1: Trade 1 with SL → ✅ Allowed (score 100)
+Day 1: Trade 2 with SL → ✅ Allowed (score 100)
+Day 1: Trade 3 with SL → ✅ Allowed (score 100)
+Day 1: Trade 4 with SL → ⚠️ Allowed with warning "4th trade today" (score 85)
+Day 1: Trade 5 no SL → ❌ BLOCKED "Stop loss required" (trade not created)
+
+Day 2: Trader checks correlation → "Win rate 65% when compliant, 30% when not"
+Day 7: Weekly report → Discipline score: 72%, most violated: MAX_DAILY_TRADES
+        Recommendation: "Your TIME_WINDOW rule has 100% compliance - great!"
 ```
 
 ## 🧠 AI Intelligence Features

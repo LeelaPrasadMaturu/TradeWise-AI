@@ -117,7 +117,59 @@ const tradeSchema = new mongoose.Schema({
   tradeDate: {
     type: Date,
     default: Date.now
-  }
+  },
+  // Behavioral analysis fields
+  entryTime: {
+    type: Date,
+    default: function() { return this.tradeDate || Date.now(); }
+  },
+  exitTime: {
+    type: Date
+  },
+  positionValue: {
+    type: Number
+  },
+  // Import metadata
+  source: {
+    type: String,
+    enum: ['manual', 'csv_import', 'api'],
+    default: 'manual'
+  },
+  brokerData: {
+    entryOrderId: String,
+    exitOrderId: String,
+    entryTradeId: String,
+    exitTradeId: String,
+    exchange: String
+  },
+  // Discipline tracking
+  ruleCheck: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'TradeRuleCheck'
+  },
+  disciplineScore: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  rulesViolated: [{
+    type: String,
+    trim: true
+  }],
+  // Pre-trade emotional state (user-selected)
+  preTradeEmotion: {
+    type: String,
+    enum: [
+      'calm', 'neutral', 'confident', 'focused',
+      'anxious', 'excited', 'fearful', 'revenge',
+      'fomo', 'frustrated', 'uncertain', 'tired', 'impatient'
+    ]
+  },
+  // Checklist responses at entry
+  checklistResponses: [{
+    question: String,
+    response: Boolean
+  }]
 }, {
   timestamps: true
 });
@@ -126,6 +178,12 @@ const tradeSchema = new mongoose.Schema({
 tradeSchema.index({ user: 1, tradeDate: -1 });
 tradeSchema.index({ user: 1, symbol: 1 });
 tradeSchema.index({ user: 1, tags: 1 });
+// Behavioral analysis indexes
+tradeSchema.index({ user: 1, entryTime: -1 });
+tradeSchema.index({ user: 1, result: 1, entryTime: -1 });
+// Discipline tracking indexes
+tradeSchema.index({ user: 1, disciplineScore: 1 });
+tradeSchema.index({ user: 1, ruleCheck: 1 });
 
 // Virtual for R:R ratio
 tradeSchema.virtual('riskRewardRatio').get(function() {
@@ -133,6 +191,29 @@ tradeSchema.virtual('riskRewardRatio').get(function() {
   const risk = Math.abs(this.entryPrice - this.stopLoss);
   const reward = Math.abs(this.takeProfit - this.entryPrice);
   return reward / risk;
+});
+
+// Virtual for position value (if not stored)
+tradeSchema.virtual('calculatedPositionValue').get(function() {
+  if (this.positionValue) return this.positionValue;
+  return this.entryPrice * this.quantity;
+});
+
+// Virtual for hold duration in minutes
+tradeSchema.virtual('holdDurationMinutes').get(function() {
+  if (!this.exitTime || !this.entryTime) return null;
+  return (this.exitTime - this.entryTime) / (1000 * 60);
+});
+
+// Pre-save hook to auto-calculate positionValue
+tradeSchema.pre('save', function(next) {
+  if (!this.positionValue && this.entryPrice && this.quantity) {
+    this.positionValue = this.entryPrice * this.quantity;
+  }
+  if (!this.entryTime && this.tradeDate) {
+    this.entryTime = this.tradeDate;
+  }
+  next();
 });
 
 const Trade = mongoose.model('Trade', tradeSchema);

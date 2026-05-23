@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const Trade = require('../models/Trade');
+const User = require('../models/User');
 const auth = require('../middlewares/authMiddleware');
 const { analyzeEmotion, extractTagsFromReason } = require('../services/emotionDetectService');
 const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisService');
+const { validateTrade, saveValidationResult } = require('../services/ruleValidationService');
+const UserTradingConfig = require('../models/UserTradingConfig');
+const { generateRealTimeAlerts } = require('../services/tradingCoachService');
 
 /**
  * @swagger
@@ -105,10 +109,56 @@ const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisServ
  */
 router.post('/', auth, async (req, res) => {
   try {
+    const { checklistResponses, preTradeEmotion, skipValidation, ...tradeData } = req.body;
+    
+    // Run pre-trade validation (unless explicitly skipped)
+    let validation = null;
+    let ruleCheck = null;
+    
+    if (!skipValidation) {
+      const config = await UserTradingConfig.getOrCreate(req.user._id);
+      
+      if (config.checklistEnabled || await hasEnabledRules(req.user._id)) {
+        validation = await validateTrade(req.user._id, tradeData, {
+          checklistResponses: checklistResponses || [],
+          preTradeEmotion
+        });
+        
+        // Block trade if validation fails and blocking is enabled
+        if (!validation.allowed) {
+          // Save the blocked attempt
+          ruleCheck = await saveValidationResult(
+            req.user._id, 
+            validation, 
+            tradeData, 
+            null
+          );
+          
+          return res.status(403).json({
+            blocked: true,
+            message: 'Trade blocked by your trading rules',
+            ruleCheckId: ruleCheck._id,
+            violations: validation.blockReasons,
+            warnings: validation.warnings,
+            score: validation.score,
+            summary: validation.summary
+          });
+        }
+      }
+    }
+    
     const trade = new Trade({
-      ...req.body,
-      user: req.user._id
+      ...tradeData,
+      user: req.user._id,
+      preTradeEmotion,
+      checklistResponses: checklistResponses || []
     });
+
+    // Add discipline data if validation was performed
+    if (validation) {
+      trade.rulesViolated = validation.violations;
+      trade.disciplineScore = validation.score;
+    }
 
     // Analyze emotion and extract tags from trade reason if provided
     if (trade.reason) {
@@ -122,6 +172,18 @@ router.post('/', auth, async (req, res) => {
 
     await trade.save();
 
+    // Save rule check result and link to trade
+    if (validation) {
+      ruleCheck = await saveValidationResult(
+        req.user._id, 
+        validation, 
+        tradeData, 
+        trade._id
+      );
+      trade.ruleCheck = ruleCheck._id;
+      await trade.save();
+    }
+
     // Generate initial post-trade analysis if exit data present
     if (trade.exitPrice || trade.exitReason || trade.postTradeReview) {
       try {
@@ -131,11 +193,39 @@ router.post('/', auth, async (req, res) => {
         console.error('Post-trade analysis error:', e.message);
       }
     }
-    res.status(201).json(trade);
+    
+    // Build response
+    const response = trade.toObject();
+    if (validation) {
+      response.ruleValidation = {
+        score: validation.score,
+        warnings: validation.warnings,
+        summary: validation.summary
+      };
+    }
+    
+    // Generate real-time coach alerts
+    try {
+      const user = await User.findById(req.user._id);
+      if (user?.coachingPreferences?.enableRealTimeAlerts !== false) {
+        response.coachAlerts = await generateRealTimeAlerts(req.user._id, trade);
+      }
+    } catch (coachError) {
+      console.error('Coach alerts error:', coachError.message);
+    }
+    
+    res.status(201).json(response);
   } catch (error) {
     res.status(500).json({ message: 'Error creating trade', error: error.message });
   }
 });
+
+// Helper function to check if user has any enabled rules
+async function hasEnabledRules(userId) {
+  const TradingRule = require('../models/TradingRule');
+  const count = await TradingRule.countDocuments({ user: userId, enabled: true });
+  return count > 0;
+}
 
 /**
  * @swagger

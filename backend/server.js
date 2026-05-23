@@ -17,6 +17,14 @@ const explainRoutes = require('./routes/explainRoutes');
 const insightRoutes = require('./routes/insightRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const priceRoutes = require('./routes/priceRoutes');
+const importRoutes = require('./routes/importRoutes');
+const behavioralRoutes = require('./routes/behavioralRoutes');
+const rulesRoutes = require('./routes/rulesRoutes');
+const disciplineRoutes = require('./routes/disciplineRoutes');
+const coachRoutes = require('./routes/coachRoutes');
+
+// Import scheduler
+const { initScheduler } = require('./services/schedulerService');
 
 // Create Express app
 const app = express();
@@ -71,6 +79,11 @@ app.use(`${constants.API_PREFIX}/explain`, writeLimiter, explainRoutes);
 app.use(`${constants.API_PREFIX}/insights`, writeLimiter, insightRoutes);
 app.use(`${constants.API_PREFIX}/alerts`, monitorLimiter, alertRoutes);
 app.use(`${constants.API_PREFIX}/prices`, writeLimiter, priceRoutes);
+app.use(`${constants.API_PREFIX}/import`, writeLimiter, importRoutes);
+app.use(`${constants.API_PREFIX}/behavioral`, writeLimiter, behavioralRoutes);
+app.use(`${constants.API_PREFIX}/rules`, writeLimiter, rulesRoutes);
+app.use(`${constants.API_PREFIX}/discipline`, writeLimiter, disciplineRoutes);
+app.use(`${constants.API_PREFIX}/coach`, writeLimiter, coachRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -86,6 +99,11 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
+    
+    // Initialize scheduled tasks (pre-market briefings, etc.)
+    initScheduler();
+    logger.info('Scheduler initialized');
+    
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`);

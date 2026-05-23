@@ -1,5 +1,6 @@
 const Trade = require('../models/Trade');
 const axios = require('axios');
+const { analyzeAllPatterns, calculateUserBaseline } = require('./behavioralPatternService');
 
 // Helper function to format trade data for Gemini
 function formatTradeForAnalysis(trade) {
@@ -82,6 +83,15 @@ async function generateWeeklyInsights(userId, startDate, endDate) {
     // Format all trades for Gemini
     const formattedTrades = trades.map(formatTradeForAnalysis);
 
+    // Get behavioral pattern analysis
+    let behavioralAnalysis = null;
+    try {
+      const periodDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+      behavioralAnalysis = await analyzeAllPatterns(userId, periodDays);
+    } catch (behavioralError) {
+      console.error('Behavioral analysis error (non-fatal):', behavioralError.message);
+    }
+
     // Build comprehensive JSON payload for Gemini
     const analysisPayload = {
       period: {
@@ -92,6 +102,18 @@ async function generateWeeklyInsights(userId, startDate, endDate) {
       statistics: stats,
       emotionAnalysis: emotionCounts,
       tagAnalysis: tagCounts,
+      behavioralPatterns: behavioralAnalysis ? {
+        score: behavioralAnalysis.behavioralScore,
+        tradingStyle: behavioralAnalysis.tradingStyle,
+        patternsDetected: behavioralAnalysis.patternsDetected.slice(0, 5).map(p => ({
+          type: p.type,
+          severity: p.severity,
+          occurrences: p.occurrences || 1,
+          costEstimate: p.costEstimate?.directCost
+        })),
+        positivePatterns: behavioralAnalysis.positivePatterns,
+        recommendations: behavioralAnalysis.recommendations
+      } : null,
       trades: formattedTrades
     };
 
@@ -108,6 +130,13 @@ Current Performance Snapshot:
 - Average P/L per Trade: ${stats.avgProfitLoss.toFixed(2)}
 - Best Trade: ${stats.bestTrade.toFixed(2)} | Worst Trade: ${stats.worstTrade.toFixed(2)}
 - Emotional Distribution: ${JSON.stringify(emotionCounts)}
+${behavioralAnalysis ? `
+Behavioral Analysis:
+- Behavioral Score: ${behavioralAnalysis.behavioralScore}/100
+- Trading Style: ${behavioralAnalysis.tradingStyle}
+- Patterns Detected: ${behavioralAnalysis.patternsDetected.length}
+- Top Patterns: ${behavioralAnalysis.patternsDetected.slice(0, 3).map(p => p.type).join(', ')}
+` : ''}
 
 # TASK
 Analyze the complete trading data provided below and generate a comprehensive performance report that:
@@ -212,8 +241,17 @@ Generate the analysis now.`;
       statistics: stats,
       emotionAnalysis: emotionCounts,
       tagAnalysis: tagCounts,
+      behavioralAnalysis: behavioralAnalysis ? {
+        behavioralScore: behavioralAnalysis.behavioralScore,
+        tradingStyle: behavioralAnalysis.tradingStyle,
+        styleConfidence: behavioralAnalysis.styleConfidence,
+        patternsDetected: behavioralAnalysis.patternsDetected,
+        positivePatterns: behavioralAnalysis.positivePatterns,
+        recommendations: behavioralAnalysis.recommendations,
+        baseline: behavioralAnalysis.baseline
+      } : null,
       tradesAnalyzed: formattedTrades.length,
-      trades: formattedTrades, // Include all trade details in response
+      trades: formattedTrades,
       aiInsights,
       generatedAt: new Date().toISOString()
     };
