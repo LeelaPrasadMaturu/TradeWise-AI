@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require('../middlewares/authMiddleware');
 const TradingRule = require('../models/TradingRule');
 const UserTradingConfig = require('../models/UserTradingConfig');
 const { validateTrade } = require('../services/ruleValidationService');
