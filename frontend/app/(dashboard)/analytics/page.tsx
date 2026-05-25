@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle } from 'lucide-react';
+import { subDays, format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -22,20 +23,36 @@ import { cn } from '@/lib/utils';
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('30d');
 
+  // Calculate date range based on period
+  const dateRange = useMemo(() => {
+    const days = parseInt(period.replace('d', ''));
+    const endDate = new Date();
+    const startDate = subDays(endDate, days);
+    return {
+      startDate: format(startDate, 'yyyy-MM-dd'),
+      endDate: format(endDate, 'yyyy-MM-dd'),
+    };
+  }, [period]);
+
   const { data: behavioral, isLoading: behavioralLoading } = useQuery({
     queryKey: ['behavioral-patterns', period],
     queryFn: () => api.getBehavioralPatterns(period),
   });
 
   const { data: tradesData, isLoading: tradesLoading } = useQuery({
-    queryKey: ['trades-all'],
-    queryFn: () => api.getTrades({ limit: 500, sort: '-tradeDate' }),
+    queryKey: ['trades-analytics', period],
+    queryFn: () => api.getTrades({ 
+      limit: 500, 
+      sort: '-tradeDate',
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
+    }),
   });
 
   const isLoading = behavioralLoading || tradesLoading;
   const trades = tradesData?.data || [];
 
-  const negativePatterns = behavioral?.patternsDetected.filter(
+  const negativePatterns = behavioral?.patternsDetected?.filter(
     p => !p.type.includes('POSITIVE')
   ) || [];
 

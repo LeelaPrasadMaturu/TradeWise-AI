@@ -275,13 +275,38 @@ async function hasEnabledRules(userId) {
  */
 router.get('/', auth, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sort = '-tradeDate' } = req.query;
-    const trades = await Trade.find({ user: req.user._id })
+    const { page = 1, limit = 10, sort = '-tradeDate', startDate, endDate, symbol, result } = req.query;
+    
+    // Build query filter
+    const filter = { user: req.user._id };
+    
+    // Date filtering
+    if (startDate || endDate) {
+      filter.tradeDate = {};
+      if (startDate) {
+        filter.tradeDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.tradeDate.$lte = new Date(endDate + 'T23:59:59.999Z');
+      }
+    }
+    
+    // Symbol filtering
+    if (symbol) {
+      filter.symbol = { $regex: symbol, $options: 'i' };
+    }
+    
+    // Result filtering
+    if (result) {
+      filter.result = result;
+    }
+    
+    const trades = await Trade.find(filter)
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const count = await Trade.countDocuments({ user: req.user._id });
+    const count = await Trade.countDocuments(filter);
 
     res.json({
       trades,
@@ -346,17 +371,45 @@ router.get('/stats', auth, async (req, res) => {
         $group: {
           _id: null,
           totalTrades: { $sum: 1 },
+          openTrades: {
+            $sum: { $cond: [{ $eq: ['$result', 'open'] }, 1, 0] }
+          },
           winningTrades: {
             $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
           },
           losingTrades: {
             $sum: { $cond: [{ $eq: ['$result', 'loss'] }, 1, 0] }
           },
+          breakevenTrades: {
+            $sum: { $cond: [{ $eq: ['$result', 'breakeven'] }, 1, 0] }
+          },
           totalProfitLoss: { $sum: '$profitLoss' },
-          avgProfitLoss: { $avg: '$profitLoss' }
+          avgProfitLoss: { $avg: '$profitLoss' },
+          avgWin: {
+            $avg: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', null] }
+          },
+          avgLoss: {
+            $avg: { $cond: [{ $eq: ['$result', 'loss'] }, '$profitLoss', null] }
+          },
+          totalWinAmount: {
+            $sum: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', 0] }
+          },
+          totalLossAmount: {
+            $sum: { $cond: [{ $eq: ['$result', 'loss'] }, { $abs: '$profitLoss' }, 0] }
+          }
         }
       }
     ]);
+
+    const raw = stats[0] || {
+      totalTrades: 0, openTrades: 0, winningTrades: 0, losingTrades: 0,
+      breakevenTrades: 0, totalProfitLoss: 0, avgProfitLoss: 0,
+      avgWin: 0, avgLoss: 0, totalWinAmount: 0, totalLossAmount: 0
+    };
+
+    const closedTrades = raw.winningTrades + raw.losingTrades + raw.breakevenTrades;
+    const winRate = closedTrades > 0 ? (raw.winningTrades / closedTrades) * 100 : 0;
+    const profitFactor = raw.totalLossAmount > 0 ? raw.totalWinAmount / raw.totalLossAmount : 0;
 
     // Get win rate by tag
     const tagStats = await Trade.aggregate([
@@ -368,28 +421,39 @@ router.get('/stats', auth, async (req, res) => {
           total: { $sum: 1 },
           wins: {
             $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
-          }
+          },
+          totalPnL: { $sum: '$profitLoss' }
         }
       },
       {
         $project: {
           tag: '$_id',
-          total: 1,
+          count: '$total',
           wins: 1,
-          winRate: { $multiply: [{ $divide: ['$wins', '$total'] }, 100] }
+          winRate: { $multiply: [{ $divide: ['$wins', '$total'] }, 100] },
+          totalPnL: 1
         }
       }
     ]);
 
+    const byTag = {};
+    tagStats.forEach(t => {
+      byTag[t.tag] = { count: t.count, wins: t.wins, winRate: t.winRate, totalPnL: t.totalPnL };
+    });
+
     res.json({
-      overall: stats[0] || {
-        totalTrades: 0,
-        winningTrades: 0,
-        losingTrades: 0,
-        totalProfitLoss: 0,
-        avgProfitLoss: 0
-      },
-      byTag: tagStats
+      totalTrades: raw.totalTrades,
+      openTrades: raw.openTrades,
+      closedTrades,
+      winningTrades: raw.winningTrades,
+      losingTrades: raw.losingTrades,
+      winRate,
+      totalProfitLoss: raw.totalProfitLoss,
+      avgProfitLoss: raw.avgProfitLoss || 0,
+      avgWin: raw.avgWin || 0,
+      avgLoss: raw.avgLoss || 0,
+      profitFactor,
+      byTag
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching trade statistics', error: error.message });
@@ -524,7 +588,9 @@ router.patch('/:id', auth, async (req, res) => {
   const allowedUpdates = [
     'symbol', 'entryPrice', 'exitPrice', 'quantity',
     'direction', 'stopLoss', 'takeProfit', 'reason', 'exitReason',
-    'tags', 'result', 'profitLoss', 'notes', 'chartScreenshot', 'postTradeReview'
+    'tags', 'result', 'profitLoss', 'notes', 'chartScreenshot', 'postTradeReview',
+    'preTradeEmotion', 'tradeDate', 'entryTime', 'exitTime', 'exitDate',
+    'assetType', 'segment', 'instrumentType', 'source'
   ];
   const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 

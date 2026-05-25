@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +34,7 @@ export default function DisciplinePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<TradingRule | null>(null);
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
+  const [retroMessage, setRetroMessage] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: score, isLoading: scoreLoading } = useQuery({
@@ -76,6 +77,22 @@ export default function DisciplinePage() {
     },
   });
 
+  const retroEvalMutation = useMutation({
+    mutationFn: () => api.evaluateRulesRetroactively(90),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['discipline-score'] });
+      queryClient.invalidateQueries({ queryKey: ['weekly-report'] });
+      queryClient.invalidateQueries({ queryKey: ['violations'] });
+      queryClient.invalidateQueries({ queryKey: ['discipline-correlation'] });
+      setRetroMessage(`✓ Evaluated ${result.processed} trades, created ${result.created} new checks.`);
+      setTimeout(() => setRetroMessage(null), 5000);
+    },
+    onError: (error: Error) => {
+      setRetroMessage(`✗ ${error.message || 'Failed to evaluate rules retroactively'}`);
+      setTimeout(() => setRetroMessage(null), 5000);
+    },
+  });
+
   const isLoading = scoreLoading || reportLoading || rulesLoading;
 
   const getRuleCompliance = (ruleId: string) => {
@@ -92,10 +109,26 @@ export default function DisciplinePage() {
             Track rule compliance and improve trading discipline
           </p>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Rule
-        </Button>
+        <div className="flex items-center gap-2">
+          {retroMessage && (
+            <span className={`text-sm ${retroMessage.startsWith('✓') ? 'text-profit' : 'text-loss'}`}>
+              {retroMessage}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => retroEvalMutation.mutate()}
+            disabled={retroEvalMutation.isPending || !rules?.some(r => r.enabled)}
+            title="Apply rules to existing trades"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${retroEvalMutation.isPending ? 'animate-spin' : ''}`} />
+            {retroEvalMutation.isPending ? 'Evaluating...' : 'Apply to Existing Trades'}
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Rule
+          </Button>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -120,11 +153,18 @@ export default function DisciplinePage() {
             {isLoading ? (
               <Skeleton className="h-[120px] w-full" />
             ) : (
-              <DisciplineGauge
-                score={score?.overallScore || 0}
-                totalTrades={score?.totalTrades || 0}
-                compliantTrades={score?.compliantTrades || 0}
-              />
+              <>
+                <DisciplineGauge
+                  score={score?.overallScore || 0}
+                  totalTrades={score?.totalTrades || 0}
+                  compliantTrades={score?.compliantTrades || 0}
+                />
+                {score?.totalTrades === 0 && rules && rules.length > 0 && rules.some(r => r.enabled) && (
+                  <p className="mt-3 text-sm text-muted-foreground text-center">
+                    Click "Apply to Existing Trades" to evaluate historical trades against your rules.
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -219,7 +259,7 @@ export default function DisciplinePage() {
                     <div className="flex flex-wrap gap-1">
                       {v.violations.map((violation, i) => (
                         <span key={i} className="text-xs text-loss">
-                          {violation}
+                          {typeof violation === 'string' ? violation : violation.message || violation.ruleName}
                         </span>
                       ))}
                     </div>

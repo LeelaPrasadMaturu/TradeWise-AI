@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const Trade = require('../models/Trade');
+const TradingRule = require('../models/TradingRule');
 const auth = require('../middlewares/authMiddleware');
 const { importFromCSV, validateCSV, SUPPORTED_BROKERS } = require('../services/csvImportService');
+const { validateTrade, saveValidationResult } = require('../services/ruleValidationService');
+const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisService');
 
 /**
  * @swagger
@@ -181,6 +184,9 @@ router.post('/csv', auth, async (req, res) => {
     // Check for duplicates if enabled
     const importedTrades = [];
     const skippedTrades = [];
+    
+    // Check if user has any enabled rules
+    const hasRules = await TradingRule.countDocuments({ user: req.user._id, enabled: true }) > 0;
 
     for (const trade of tradesToImport) {
       let isDuplicate = false;
@@ -213,18 +219,66 @@ router.post('/csv', auth, async (req, res) => {
           user: req.user._id,
           symbol: trade.symbol,
           assetType: trade.assetType || 'stock',
+          segment: trade.segment || 'equity',
+          instrumentType: trade.instrumentType || 'stock',
+          optionType: trade.optionType || undefined,
+          strikePrice: trade.strikePrice || undefined,
+          contractExpiry: trade.contractExpiry || undefined,
           entryPrice: trade.entryPrice,
           exitPrice: trade.exitPrice || undefined,
+          entryTime: trade.entryTime || trade.tradeDate,
+          exitTime: trade.exitTime || trade.exitDate || undefined,
           quantity: trade.quantity,
           direction: trade.direction,
           profitLoss: trade.profitLoss || undefined,
           result: trade.result || 'open',
           tradeDate: trade.tradeDate,
+          exitDate: trade.exitDate || undefined,
           notes: trade.notes || `Imported from ${parseResult.broker} CSV`,
-          tags: ['csv-import', parseResult.broker]
+          tags: ['csv-import', parseResult.broker],
+          source: 'csv_import'
         });
 
         await newTrade.save();
+        
+        // Run rule validation (same as manual trade creation)
+        if (hasRules) {
+          try {
+            const validation = await validateTrade(req.user._id, {
+              symbol: trade.symbol,
+              entryPrice: trade.entryPrice,
+              quantity: trade.quantity,
+              direction: trade.direction,
+              tradeDate: trade.tradeDate,
+              entryTime: trade.entryTime || trade.tradeDate
+            }, {
+              checklistResponses: [],
+              preTradeEmotion: null
+            });
+            
+            // Save rule check and link to trade (don't block - it's historical)
+            const ruleCheck = await saveValidationResult(
+              req.user._id,
+              validation,
+              trade,
+              newTrade._id
+            );
+            newTrade.ruleCheck = ruleCheck._id;
+            await newTrade.save();
+          } catch (ruleError) {
+            console.error('Rule validation error for imported trade:', ruleError.message);
+          }
+        }
+        
+        // Run post-trade analysis for closed trades
+        if (newTrade.result && newTrade.result !== 'open' && newTrade.exitPrice) {
+          try {
+            await generatePostTradeAnalysis(newTrade._id, req.user._id);
+          } catch (analysisError) {
+            console.error('Post-trade analysis error:', analysisError.message);
+          }
+        }
+        
         importedTrades.push(newTrade);
       }
     }

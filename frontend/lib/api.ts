@@ -14,6 +14,16 @@ import type {
   TaxReport,
   FlashbackWarning,
   GamePlan,
+  EdgeAnalysis,
+  EdgeStats,
+  TimeAlertResponse,
+  HoldTimeAnalysis,
+  Playbook,
+  PlaybookSetup,
+  SetupMatchCriteria,
+  SetupRules,
+  SetupChecklist,
+  SetupComparison,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -95,7 +105,22 @@ class ApiClient {
       });
     }
     const query = searchParams.toString();
-    return this.request<PaginatedResponse<Trade>>(`/trades${query ? `?${query}` : ''}`);
+    const response = await this.request<{
+      trades: Trade[];
+      totalPages: number;
+      currentPage: number;
+    }>(`/trades${query ? `?${query}` : ''}`);
+    
+    // Map backend response to frontend PaginatedResponse format
+    return {
+      data: response.trades || [],
+      pagination: {
+        page: Number(response.currentPage) || 1,
+        limit: params?.limit || 10,
+        total: (response.trades?.length || 0) * (response.totalPages || 1),
+        totalPages: response.totalPages || 1,
+      },
+    };
   }
 
   async getTrade(id: string): Promise<Trade> {
@@ -155,7 +180,8 @@ class ApiClient {
   }
 
   async getWeeklyReport(): Promise<DisciplineScore> {
-    return this.request<DisciplineScore>('/discipline/weekly-report');
+    const response = await this.request<{ success: boolean; report: DisciplineScore }>('/discipline/weekly-report');
+    return response.report;
   }
 
   async getCorrelation(): Promise<{
@@ -172,12 +198,19 @@ class ApiClient {
     date: string;
     violations: string[];
   }>> {
-    return this.request('/discipline/violations');
+    const response = await this.request<{ success: boolean; count: number; violations: Array<{
+      tradeId: string;
+      symbol: string;
+      date: string;
+      violations: string[];
+    }> }>('/discipline/violations');
+    return response.violations || [];
   }
 
   // Rules
   async getRules(): Promise<TradingRule[]> {
-    return this.request<TradingRule[]>('/rules');
+    const response = await this.request<{ success: boolean; count: number; rules: TradingRule[] }>('/rules');
+    return response.rules || [];
   }
 
   async createRule(rule: Partial<TradingRule>): Promise<TradingRule> {
@@ -215,6 +248,21 @@ class ApiClient {
   async applyTemplate(templateName: string): Promise<TradingRule[]> {
     return this.request<TradingRule[]>(`/rules/templates/${templateName}/apply`, {
       method: 'POST',
+    });
+  }
+
+  async evaluateRulesRetroactively(periodDays: number = 90): Promise<{
+    success: boolean;
+    processed: number;
+    created: number;
+    updated: number;
+    errors: number;
+    rulesEvaluated: number;
+    message?: string;
+  }> {
+    return this.request('/rules/evaluate-retroactively', {
+      method: 'POST',
+      body: JSON.stringify({ periodDays, forceRecheck: true }),
     });
   }
 
@@ -267,7 +315,16 @@ class ApiClient {
   async validateCSV(csv: string, broker?: string): Promise<{
     valid: boolean;
     broker: string;
-    preview: Trade[];
+    summary?: {
+      totalExecutions: number;
+      parsedExecutions: number;
+      completedTrades: number;
+      openPositions: number;
+    };
+    preview?: {
+      trades: Trade[];
+      openPositions: Trade[];
+    };
     errors?: string[];
   }> {
     return this.request('/import/csv/validate', {
@@ -363,6 +420,324 @@ class ApiClient {
     };
   }> {
     return this.request('/coach/game-plan');
+  }
+
+  // Learning - Quiz & Flashcards
+  async getQuiz(params?: { difficulty?: string; count?: number }): Promise<{
+    success: boolean;
+    quiz: {
+      id: string;
+      questions: Array<{
+        id: string;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        explanation: string;
+        relatedPattern?: string;
+      }>;
+      difficulty: string;
+      generatedAt: string;
+    };
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.difficulty) searchParams.append('difficulty', params.difficulty);
+    if (params?.count) searchParams.append('count', String(params.count));
+    const query = searchParams.toString();
+    return this.request(`/explain/quiz${query ? `?${query}` : ''}`);
+  }
+
+  async getFlashcards(params?: { category?: string; count?: number }): Promise<{
+    success: boolean;
+    flashcards: Array<{
+      id: string;
+      front: string;
+      back: string;
+      category: string;
+      relatedTrade?: string;
+      difficulty: string;
+    }>;
+    categories: string[];
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.category) searchParams.append('category', params.category);
+    if (params?.count) searchParams.append('count', String(params.count));
+    const query = searchParams.toString();
+    return this.request(`/explain/flashcards${query ? `?${query}` : ''}`);
+  }
+
+  async explainTerm(term: string, level?: string): Promise<{
+    success: boolean;
+    term: string;
+    level: string;
+    explanation: string;
+    examples?: string[];
+    relatedTerms?: string[];
+  }> {
+    const searchParams = new URLSearchParams({ term });
+    if (level) searchParams.append('level', level);
+    return this.request(`/explain/term?${searchParams.toString()}`);
+  }
+
+  async explainText(text: string, context?: string): Promise<{
+    success: boolean;
+    explanation: string;
+    keyTerms?: Array<{ term: string; meaning: string }>;
+  }> {
+    return this.request('/explain', {
+      method: 'POST',
+      body: JSON.stringify({ text, context }),
+    });
+  }
+
+  // Price Alerts
+  async getPriceAlerts(): Promise<{
+    success: boolean;
+    alerts: Array<{
+      _id: string;
+      symbol: string;
+      assetType: string;
+      alertType: 'above' | 'below' | 'percentage_change';
+      targetPrice?: number;
+      percentageChange?: number;
+      currentPrice?: number;
+      triggered: boolean;
+      triggeredAt?: string;
+      active: boolean;
+      createdAt: string;
+    }>;
+  }> {
+    return this.request('/alerts');
+  }
+
+  async createPriceAlert(alert: {
+    symbol: string;
+    assetType?: string;
+    alertType: 'above' | 'below' | 'percentage_change';
+    targetPrice?: number;
+    percentageChange?: number;
+  }): Promise<{
+    success: boolean;
+    alert: {
+      _id: string;
+      symbol: string;
+      alertType: string;
+      targetPrice?: number;
+    };
+  }> {
+    return this.request('/alerts', {
+      method: 'POST',
+      body: JSON.stringify(alert),
+    });
+  }
+
+  async deletePriceAlert(id: string): Promise<void> {
+    await this.request(`/alerts/${id}`, { method: 'DELETE' });
+  }
+
+  async togglePriceAlert(id: string): Promise<{
+    success: boolean;
+    alert: { _id: string; active: boolean };
+  }> {
+    return this.request(`/alerts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ toggle: true }),
+    });
+  }
+
+  // Weekly Insights
+  async getWeeklyInsights(startDate?: string, endDate?: string): Promise<{
+    success: boolean;
+    period: { start: string; end: string };
+    metrics: {
+      totalTrades: number;
+      winRate: number;
+      totalPnL: number;
+      avgWin: number;
+      avgLoss: number;
+      profitFactor: number;
+    };
+    insights: string[];
+    recommendations: string[];
+  }> {
+    const searchParams = new URLSearchParams();
+    if (startDate) searchParams.append('startDate', startDate);
+    if (endDate) searchParams.append('endDate', endDate);
+    const query = searchParams.toString();
+    return this.request(`/insights/weekly${query ? `?${query}` : ''}`);
+  }
+
+  // Supported Brokers for Import
+  async getSupportedBrokers(): Promise<{
+    brokers: Array<{
+      id: string;
+      name: string;
+      description: string;
+      supportedFormats: string[];
+    }>;
+  }> {
+    return this.request('/import/supported-brokers');
+  }
+
+  async getSampleCSV(broker?: string): Promise<string> {
+    const query = broker ? `?broker=${broker}` : '';
+    const response = await fetch(`${API_BASE_URL}/import/sample-csv${query}`, {
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+    });
+    return response.text();
+  }
+
+  // Edge Analysis
+  async getEdgeAnalysis(days: number = 90): Promise<EdgeAnalysis & { success: boolean }> {
+    return this.request(`/edge/analysis?days=${days}`);
+  }
+
+  async compareEdge(currentDays: number = 30, previousDays: number = 30): Promise<{
+    success: boolean;
+    current: EdgeStats & { period: string };
+    previous: EdgeStats & { period: string };
+    changes: {
+      winRate: number;
+      totalPnL: number;
+      avgPnL: number;
+      profitFactor: number | string;
+    };
+    trending: 'improving' | 'declining';
+  }> {
+    return this.request(`/edge/compare?currentDays=${currentDays}&previousDays=${previousDays}`);
+  }
+
+  // Time-in-Trade Alerts
+  async getTimeAlerts(): Promise<TimeAlertResponse & { success: boolean }> {
+    return this.request('/edge/time-alerts');
+  }
+
+  async getHoldTimeAnalysis(days: number = 90): Promise<HoldTimeAnalysis & { success: boolean }> {
+    return this.request(`/edge/hold-time-analysis?days=${days}`);
+  }
+
+  async checkTradeHoldTime(tradeId: string): Promise<{
+    success: boolean;
+    isOverheld: boolean;
+    holdMinutes: number;
+    avgHoldMinutes: number;
+    percentOver: number;
+    message: string;
+  }> {
+    return this.request(`/edge/check-trade/${tradeId}`);
+  }
+
+  // Playbook
+  async getPlaybook(): Promise<{ success: boolean; playbook: Playbook }> {
+    return this.request('/playbook');
+  }
+
+  async addSetup(setup: {
+    name: string;
+    description?: string;
+    matchCriteria?: Partial<SetupMatchCriteria>;
+    rules?: Partial<SetupRules>;
+    checklist?: SetupChecklist[];
+    color?: string;
+    icon?: string;
+  }): Promise<{ success: boolean; playbook: Playbook }> {
+    return this.request('/playbook/setups', {
+      method: 'POST',
+      body: JSON.stringify(setup),
+    });
+  }
+
+  async updateSetup(setupId: string, updates: Partial<PlaybookSetup>): Promise<{
+    success: boolean;
+    playbook: Playbook;
+  }> {
+    return this.request(`/playbook/setups/${setupId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  async deleteSetup(setupId: string): Promise<{ success: boolean; playbook: Playbook }> {
+    return this.request(`/playbook/setups/${setupId}`, { method: 'DELETE' });
+  }
+
+  async autoTagTrade(trade: Partial<Trade>): Promise<{
+    success: boolean;
+    matched: boolean;
+    setup: {
+      id: string;
+      name: string;
+      color: string;
+      rules: SetupRules;
+      checklist: SetupChecklist[];
+    } | null;
+  }> {
+    return this.request('/playbook/auto-tag', {
+      method: 'POST',
+      body: JSON.stringify({ trade }),
+    });
+  }
+
+  async validateAgainstSetup(trade: Partial<Trade>, setupId: string): Promise<{
+    success: boolean;
+    valid: boolean;
+    violations: Array<{ rule: string; message: string }>;
+    setup: string;
+  }> {
+    return this.request('/playbook/validate', {
+      method: 'POST',
+      body: JSON.stringify({ trade, setupId }),
+    });
+  }
+
+  async getSetupStats(setupId?: string): Promise<{
+    success: boolean;
+    stats: PlaybookSetup['stats'] | Array<{
+      id: string;
+      name: string;
+      color: string;
+      enabled: boolean;
+    } & PlaybookSetup['stats']>;
+  }> {
+    const query = setupId ? `?setupId=${setupId}` : '';
+    return this.request(`/playbook/stats${query}`);
+  }
+
+  async compareSetups(days: number = 90): Promise<SetupComparison & { success: boolean }> {
+    return this.request(`/playbook/compare?days=${days}`);
+  }
+
+  async getSetupTrades(setupId: string, limit: number = 50): Promise<{
+    success: boolean;
+    setup: { id: string; name: string; color: string; stats: PlaybookSetup['stats'] };
+    trades: Trade[];
+    totalFound: number;
+  }> {
+    return this.request(`/playbook/setups/${setupId}/trades?limit=${limit}`);
+  }
+
+  async getSetupSuggestions(): Promise<{
+    success: boolean;
+    suggestions: Array<{
+      keyword: string;
+      count: number;
+      winRate: number;
+      totalPnL: number;
+    }>;
+    message: string;
+  }> {
+    return this.request('/playbook/suggestions');
+  }
+
+  async updatePlaybookSettings(settings: Partial<Playbook['settings']>): Promise<{
+    success: boolean;
+    settings: Playbook['settings'];
+  }> {
+    return this.request('/playbook/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
   }
 }
 

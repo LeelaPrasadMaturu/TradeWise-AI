@@ -675,9 +675,133 @@ async function saveValidationResult(userId, validationResult, tradeData, tradeId
   return check;
 }
 
+/**
+ * Evaluate rules retroactively on existing trades
+ * Called when rules are created, updated, or enabled
+ * Creates/updates TradeRuleCheck documents for all trades
+ */
+async function evaluateRulesRetroactively(userId, options = {}) {
+  const { 
+    periodDays = 90,  // How far back to evaluate
+    forceRecheck = false  // Re-evaluate even if trade already has a rule check
+  } = options;
+  
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - periodDays);
+  
+  // Get all trades in the period
+  const query = {
+    user: userId,
+    tradeDate: { $gte: startDate }
+  };
+  
+  // Optionally skip trades that already have rule checks
+  if (!forceRecheck) {
+    query.ruleCheck = { $exists: false };
+  }
+  
+  const trades = await Trade.find(query).sort({ tradeDate: 1 });
+  
+  if (trades.length === 0) {
+    return {
+      processed: 0,
+      created: 0,
+      updated: 0,
+      errors: 0
+    };
+  }
+  
+  // Get user's enabled rules
+  const rules = await TradingRule.find({ user: userId, enabled: true });
+  
+  if (rules.length === 0) {
+    return {
+      processed: trades.length,
+      created: 0,
+      updated: 0,
+      errors: 0,
+      message: 'No enabled rules to evaluate'
+    };
+  }
+  
+  let created = 0;
+  let updated = 0;
+  let errors = 0;
+  
+  for (const trade of trades) {
+    try {
+      // Build trade data for validation
+      const tradeData = {
+        symbol: trade.symbol,
+        entryPrice: trade.entryPrice,
+        exitPrice: trade.exitPrice,
+        quantity: trade.quantity,
+        direction: trade.direction,
+        stopLoss: trade.stopLoss,
+        takeProfit: trade.takeProfit,
+        reason: trade.reason,
+        tradeDate: trade.tradeDate,
+        entryTime: trade.entryTime || trade.tradeDate
+      };
+      
+      // Run validation
+      const validation = await validateTrade(userId, tradeData, {
+        checklistResponses: [],
+        preTradeEmotion: trade.preTradeEmotion || null
+      });
+      
+      // Check if trade already has a rule check
+      let ruleCheck;
+      if (trade.ruleCheck && forceRecheck) {
+        // Update existing rule check
+        ruleCheck = await TradeRuleCheck.findById(trade.ruleCheck);
+        if (ruleCheck) {
+          ruleCheck.ruleResults = validation.results;
+          ruleCheck.passedRules = validation.passedRules;
+          ruleCheck.totalRules = validation.totalRules;
+          ruleCheck.warnings = validation.warnings?.length || 0;
+          ruleCheck.blocks = validation.blockReasons?.length || 0;
+          ruleCheck.tradeAllowed = validation.allowed;
+          ruleCheck.disciplineScore = validation.score;
+          ruleCheck.checkedAt = new Date();
+          await ruleCheck.save();
+          updated++;
+        }
+      }
+      
+      if (!ruleCheck) {
+        // Create new rule check
+        ruleCheck = await saveValidationResult(
+          userId,
+          validation,
+          tradeData,
+          trade._id
+        );
+        
+        // Link rule check to trade
+        trade.ruleCheck = ruleCheck._id;
+        await trade.save();
+        created++;
+      }
+    } catch (error) {
+      console.error(`Error evaluating rules for trade ${trade._id}:`, error.message);
+      errors++;
+    }
+  }
+  
+  return {
+    processed: trades.length,
+    created,
+    updated,
+    errors,
+    rulesEvaluated: rules.length
+  };
+}
+
 module.exports = {
   validateTrade,
   saveValidationResult,
+  evaluateRulesRetroactively,
   getTodayContext,
   getRecentContext,
   checkSingleRule,

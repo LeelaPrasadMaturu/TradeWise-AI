@@ -98,12 +98,12 @@ export function EquityCurve({ trades }: EquityCurveProps) {
           <Line
             type="monotone"
             dataKey="cumulative"
-            stroke="hsl(var(--primary))"
+            stroke="#10b981"
             strokeWidth={2}
             dot={false}
             activeDot={{
               r: 4,
-              fill: 'hsl(var(--primary))',
+              fill: '#10b981',
               stroke: 'hsl(var(--background))',
               strokeWidth: 2,
             }}

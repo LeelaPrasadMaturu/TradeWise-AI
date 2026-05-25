@@ -272,7 +272,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Short Term (STCG)</p>
-                        <p className="font-semibold">Tax Rate: 15%</p>
+                        <p className="font-semibold">Tax Rate: 20%</p>
                       </div>
                       <p className={`text-xl font-bold font-mono-numbers ${
                         report.equity.stcg.netPnL >= 0 ? 'text-profit' : 'text-loss'
@@ -283,7 +283,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground">Long Term (LTCG)</p>
-                        <p className="font-semibold">Tax Rate: 10% above 1L</p>
+                        <p className="font-semibold">Tax Rate: 12.5% above ₹1.25L</p>
                       </div>
                       <p className={`text-xl font-bold font-mono-numbers ${
                         report.equity.ltcg.netPnL >= 0 ? 'text-profit' : 'text-loss'
@@ -379,7 +379,7 @@ export default function ReportsPage() {
                     <Badge variant="secondary" className="ml-2">{report.equity.stcg.tradeCount} trades</Badge>
                   </CardTitle>
                   <CardDescription>
-                    Equity held for less than 12 months. Taxed at 15%.
+                    Equity held for less than 12 months. Taxed at 20% (Section 111A).
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -404,7 +404,7 @@ export default function ReportsPage() {
                     <Badge variant="secondary" className="ml-2">{report.equity.ltcg.tradeCount} trades</Badge>
                   </CardTitle>
                   <CardDescription>
-                    Equity held for more than 12 months. Taxed at 10% above Rs 1 lakh exemption.
+                    Equity held for more than 12 months. Taxed at 12.5% above ₹1.25 lakh exemption (Section 112A).
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

@@ -23,6 +23,8 @@ const rulesRoutes = require('./routes/rulesRoutes');
 const disciplineRoutes = require('./routes/disciplineRoutes');
 const coachRoutes = require('./routes/coachRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const edgeRoutes = require('./routes/edgeRoutes');
+const playbookRoutes = require('./routes/playbookRoutes');
 
 // Import scheduler
 const { initScheduler } = require('./services/schedulerService');
@@ -86,6 +88,8 @@ app.use(`${constants.API_PREFIX}/rules`, writeLimiter, rulesRoutes);
 app.use(`${constants.API_PREFIX}/discipline`, writeLimiter, disciplineRoutes);
 app.use(`${constants.API_PREFIX}/coach`, writeLimiter, coachRoutes);
 app.use(`${constants.API_PREFIX}/reports`, writeLimiter, reportRoutes);
+app.use(`${constants.API_PREFIX}/edge`, writeLimiter, edgeRoutes);
+app.use(`${constants.API_PREFIX}/playbook`, writeLimiter, playbookRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

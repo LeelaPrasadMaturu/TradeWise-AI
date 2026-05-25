@@ -270,62 +270,81 @@ router.get('/game-plan', auth, async (req, res) => {
     const briefing = await generatePreMarketBriefing(req.user._id);
     const flashback = await getFlashbackSummary(req.user._id, {});
     
-    // Build game plan from briefing and flashback data
-    const gamePlan = {
-      avoid: [],
-      focus: [],
-      rules: [],
-      warnings: flashback.warnings.filter(w => w.severity === 'high').slice(0, 3)
-    };
+    // Build game plan matching frontend expected structure
+    const symbolsToAvoid = [];
+    const focusAreas = [];
+    const rulesReminder = [];
+    const bestTradingHours = [];
+    let emotionalCheck = null;
     
-    // Add time-based avoidance
-    const badHourWarning = flashback.warnings.find(w => w.type === 'BAD_HOUR');
-    if (badHourWarning) {
-      gamePlan.avoid.push({
-        reason: 'TIME',
-        message: badHourWarning.message,
-        data: badHourWarning.data
+    // Extract symbols to avoid from flashback warnings
+    const symbolWarnings = flashback.warnings.filter(w => w.type === 'SYMBOL_LOSS');
+    symbolWarnings.forEach(sw => {
+      if (sw.data?.symbol) {
+        symbolsToAvoid.push(sw.data.symbol);
+      }
+    });
+    
+    // Add worst performing symbols from briefing
+    if (briefing.worstSymbols && briefing.worstSymbols.length > 0) {
+      briefing.worstSymbols.forEach(s => {
+        if (!symbolsToAvoid.includes(s.symbol)) {
+          symbolsToAvoid.push(s.symbol);
+        }
       });
     }
     
-    // Add day-based avoidance
+    // Add focus areas from AI-generated briefing
+    if (briefing.focusAreas && briefing.focusAreas.length > 0) {
+      focusAreas.push(...briefing.focusAreas);
+    }
+    
+    // Add day-specific warnings as focus areas
     const badDayWarning = flashback.warnings.find(w => w.type === 'BAD_DAY');
     if (badDayWarning) {
-      gamePlan.avoid.push({
-        reason: 'DAY',
-        message: badDayWarning.message,
-        data: badDayWarning.data
-      });
+      focusAreas.push(badDayWarning.message);
     }
     
     // Add loss streak warning
     const lossStreakWarning = flashback.warnings.find(w => w.type === 'LOSS_STREAK');
     if (lossStreakWarning) {
-      gamePlan.avoid.push({
-        reason: 'PATTERN',
-        message: lossStreakWarning.message,
-        detail: lossStreakWarning.detail
-      });
+      emotionalCheck = lossStreakWarning.message + ' - consider taking a break or trading smaller size.';
     }
     
-    // Add best hours from briefing
+    // Extract best trading hours
     if (briefing.bestHours && briefing.bestHours.length > 0) {
-      gamePlan.focus.push({
-        type: 'BEST_HOURS',
-        message: `Best trading hours: ${briefing.bestHours.map(h => `${h.hour}:00`).join(', ')}`,
-        data: briefing.bestHours
+      briefing.bestHours.forEach(h => {
+        bestTradingHours.push(h.hour);
       });
     }
     
-    // Add focus areas from AI
-    if (briefing.focusAreas && briefing.focusAreas.length > 0) {
-      briefing.focusAreas.forEach(area => {
-        gamePlan.focus.push({
-          type: 'AI_FOCUS',
-          message: area
-        });
+    // Add rules reminders from yesterday's violations
+    if (briefing.rulesViolated && briefing.rulesViolated.rules) {
+      briefing.rulesViolated.rules.forEach(rule => {
+        rulesReminder.push(`Remember: ${rule}`);
       });
     }
+    
+    // Add warning about worst hours
+    if (briefing.worstHours && briefing.worstHours.length > 0) {
+      const worstHoursStr = briefing.worstHours.map(h => `${h.hour}:00`).join(', ');
+      rulesReminder.push(`Avoid trading at ${worstHoursStr} (historically low win rate)`);
+    }
+    
+    // Default focus areas if none generated
+    if (focusAreas.length === 0) {
+      focusAreas.push('Focus on high-quality setups only');
+      focusAreas.push('Follow your trading rules strictly');
+      focusAreas.push('Wait for clear market direction');
+    }
+    
+    const gamePlan = {
+      symbolsToAvoid,
+      focusAreas,
+      rulesReminder,
+      bestTradingHours,
+      emotionalCheck
+    };
     
     res.json({
       success: true,

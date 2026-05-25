@@ -17,6 +17,7 @@ const SUPPORTED_BROKERS = {
  */
 const ZERODHA_COLUMNS = {
   trade_date: ['trade_date', 'date', 'trade date'],
+  trade_time: ['trade_time', 'time', 'order_time', 'execution_time'],
   exchange: ['exchange', 'exch'],
   symbol: ['symbol', 'tradingsymbol', 'scrip', 'instrument'],
   trade_type: ['trade_type', 'type', 'side', 'buy/sell', 'order_type'],
@@ -125,31 +126,47 @@ function findColumn(headers, columnAliases) {
 function parseDate(dateStr) {
   if (!dateStr) return new Date();
   
-  // Handle common formats: YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, etc.
-  const formats = [
-    // ISO format
-    /^(\d{4})-(\d{2})-(\d{2})/, // 2024-03-15
-    // Indian format
-    /^(\d{2})-(\d{2})-(\d{4})/, // 15-03-2024
-    /^(\d{2})\/(\d{2})\/(\d{4})/, // 15/03/2024
-  ];
-
-  // Try ISO format first
-  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  // Try ISO format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS
+  const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (isoMatch) {
-    return new Date(dateStr);
+    const [, year, month, day, hours, minutes, seconds] = isoMatch;
+    const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (hours) {
+      d.setHours(parseInt(hours), parseInt(minutes) || 0, parseInt(seconds) || 0);
+    }
+    return d;
   }
 
-  // Try DD-MM-YYYY or DD/MM/YYYY
-  const indianMatch = dateStr.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})/);
+  // Try DD-MM-YYYY or DD/MM/YYYY (with optional time)
+  const indianMatch = dateStr.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
   if (indianMatch) {
-    const [, day, month, year] = indianMatch;
-    return new Date(`${year}-${month}-${day}`);
+    const [, day, month, year, hours, minutes, seconds] = indianMatch;
+    const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (hours) {
+      d.setHours(parseInt(hours), parseInt(minutes) || 0, parseInt(seconds) || 0);
+    }
+    return d;
   }
 
   // Fallback: let JS parse it
   const parsed = new Date(dateStr);
   return isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+/**
+ * Combine a parsed date with a time string (HH:MM or HH:MM:SS)
+ */
+function combineDateTime(date, timeStr) {
+  if (!timeStr || !date) return date;
+  
+  const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (timeMatch) {
+    const [, hours, minutes, seconds] = timeMatch;
+    const combined = new Date(date);
+    combined.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds) || 0);
+    return combined;
+  }
+  return date;
 }
 
 /**
@@ -165,6 +182,13 @@ function normalizeTradeType(type) {
 /**
  * Detect if symbol is an F&O instrument and extract metadata
  * Returns: { segment, instrumentType, optionType, strikePrice, contractExpiry, baseSymbol }
+ * 
+ * Symbol formats:
+ * - Options monthly: NIFTY26MAR22000CE (base + YY + MMM + strike + CE/PE)
+ * - Options weekly: NIFTY26MAR2722000CE (base + YY + MMM + DD + strike + CE/PE)
+ * - Futures monthly: NIFTY26MARFUT (base + YY + MMM + FUT)
+ * - Futures weekly: NIFTY26MAR27FUT (base + YY + MMM + DD + FUT)
+ * - Stock Futures: RELIANCE26MARFUT
  */
 function detectFnOInstrument(symbol) {
   const result = {
@@ -180,7 +204,7 @@ function detectFnOInstrument(symbol) {
 
   const upperSymbol = symbol.toUpperCase();
 
-  // Pattern for Futures: NIFTY24MAYFUT, BANKNIFTY24JUN27FUT, RELIANCE24JUNFUT
+  // Pattern for Futures: NIFTY26MARFUT, NIFTY26MAR27FUT, RELIANCE26MARFUT
   const futuresPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{0,2})FUT$/i;
   const futuresMatch = upperSymbol.match(futuresPattern);
   if (futuresMatch) {
@@ -192,12 +216,12 @@ function detectFnOInstrument(symbol) {
     return result;
   }
 
-  // Pattern for Options: NIFTY2450022000CE, BANKNIFTY24MAY48000PE
-  // Format: SYMBOL + YY + MMM/MMMDD + STRIKE + CE/PE
-  const optionsPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{0,2})(\d+)(CE|PE)$/i;
-  const optionsMatch = upperSymbol.match(optionsPattern);
-  if (optionsMatch) {
-    const [, base, year, month, day, strike, optType] = optionsMatch;
+  // Pattern for Options with day (weekly): NIFTY26MAR2722000CE
+  // Day is exactly 2 digits before the strike (which is typically 4-6 digits)
+  const weeklyOptionsPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{2})(\d{4,6})(CE|PE)$/i;
+  const weeklyMatch = upperSymbol.match(weeklyOptionsPattern);
+  if (weeklyMatch) {
+    const [, base, year, month, day, strike, optType] = weeklyMatch;
     result.segment = 'fno';
     result.instrumentType = 'options';
     result.baseSymbol = base;
@@ -207,17 +231,45 @@ function detectFnOInstrument(symbol) {
     return result;
   }
 
-  // Alternative pattern for weekly options: NIFTY24MAR2822000CE
-  const weeklyPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{2})(\d+)(CE|PE)$/i;
-  const weeklyMatch = upperSymbol.match(weeklyPattern);
-  if (weeklyMatch) {
-    const [, base, year, month, day, strike, optType] = weeklyMatch;
+  // Pattern for Options without day (monthly): NIFTY26MAR22000CE
+  // No day, strike is typically 4-6 digits
+  const monthlyOptionsPattern = /^([A-Z]+)(\d{2})([A-Z]{3})(\d{4,6})(CE|PE)$/i;
+  const monthlyMatch = upperSymbol.match(monthlyOptionsPattern);
+  if (monthlyMatch) {
+    const [, base, year, month, strike, optType] = monthlyMatch;
     result.segment = 'fno';
     result.instrumentType = 'options';
     result.baseSymbol = base;
     result.strikePrice = parseFloat(strike);
     result.optionType = optType.toUpperCase();
-    result.contractExpiry = parseExpiryDate(year, month, day);
+    result.contractExpiry = parseExpiryDate(year, month, '');
+    return result;
+  }
+
+  // Pattern for BankNifty options (5 digit strikes): BANKNIFTY26MAR48000CE
+  const bankNiftyPattern = /^(BANKNIFTY)(\d{2})([A-Z]{3})(\d{2})?(\d{5})(CE|PE)$/i;
+  const bankNiftyMatch = upperSymbol.match(bankNiftyPattern);
+  if (bankNiftyMatch) {
+    const [, base, year, month, day, strike, optType] = bankNiftyMatch;
+    result.segment = 'fno';
+    result.instrumentType = 'options';
+    result.baseSymbol = base;
+    result.strikePrice = parseFloat(strike);
+    result.optionType = optType.toUpperCase();
+    result.contractExpiry = parseExpiryDate(year, month, day || '');
+    return result;
+  }
+
+  // Generic fallback: anything ending in CE/PE with numbers is likely options
+  const genericOptionsPattern = /^([A-Z]+).*(\d{4,6})(CE|PE)$/i;
+  const genericMatch = upperSymbol.match(genericOptionsPattern);
+  if (genericMatch) {
+    const [, base, strike, optType] = genericMatch;
+    result.segment = 'fno';
+    result.instrumentType = 'options';
+    result.baseSymbol = base;
+    result.strikePrice = parseFloat(strike);
+    result.optionType = optType.toUpperCase();
     return result;
   }
 
@@ -262,6 +314,7 @@ function getLastThursday(year, month) {
 function parseZerodhaTradebook(headers, rows) {
   const colMap = {
     date: findColumn(headers, ZERODHA_COLUMNS.trade_date) || findColumn(headers, ['date']),
+    time: findColumn(headers, ZERODHA_COLUMNS.trade_time),
     symbol: findColumn(headers, ZERODHA_COLUMNS.symbol),
     type: findColumn(headers, ZERODHA_COLUMNS.trade_type),
     quantity: findColumn(headers, ZERODHA_COLUMNS.quantity),
@@ -277,16 +330,22 @@ function parseZerodhaTradebook(headers, rows) {
   if (!colMap.quantity) throw new Error('Missing quantity column in CSV');
   if (!colMap.price) throw new Error('Missing price column in CSV');
 
-  const executions = rows.map(row => ({
-    date: parseDate(row[colMap.date]),
-    symbol: row[colMap.symbol]?.toUpperCase(),
-    type: normalizeTradeType(row[colMap.type]),
-    quantity: parseFloat(row[colMap.quantity]) || 0,
-    price: parseFloat(row[colMap.price]) || 0,
-    exchange: row[colMap.exchange] || 'NSE',
-    orderId: row[colMap.orderId] || null,
-    tradeId: row[colMap.tradeId] || null
-  })).filter(exec => exec.symbol && exec.quantity > 0 && exec.price > 0);
+  const executions = rows.map(row => {
+    let date = parseDate(row[colMap.date]);
+    if (colMap.time && row[colMap.time]) {
+      date = combineDateTime(date, row[colMap.time]);
+    }
+    return {
+      date,
+      symbol: row[colMap.symbol]?.toUpperCase(),
+      type: normalizeTradeType(row[colMap.type]),
+      quantity: parseFloat(row[colMap.quantity]) || 0,
+      price: parseFloat(row[colMap.price]) || 0,
+      exchange: row[colMap.exchange] || 'NSE',
+      orderId: row[colMap.orderId] || null,
+      tradeId: row[colMap.tradeId] || null
+    };
+  }).filter(exec => exec.symbol && exec.quantity > 0 && exec.price > 0);
 
   return executions;
 }

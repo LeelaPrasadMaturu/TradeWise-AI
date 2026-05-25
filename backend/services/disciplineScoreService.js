@@ -34,8 +34,11 @@ async function calculatePeriodScore(userId, periodDays = 7) {
   
   if (checks.length === 0) {
     return {
-      score: 100,
+      overallScore: 0,
+      score: 0,
+      totalTrades: 0,
       totalChecks: 0,
+      compliantTrades: 0,
       period: `${periodDays} days`
     };
   }
@@ -44,11 +47,15 @@ async function calculatePeriodScore(userId, periodDays = 7) {
     checks.reduce((sum, c) => sum + (c.disciplineScore || 100), 0) / checks.length
   );
   
+  const compliantTrades = checks.filter(c => c.warnings === 0 && c.blocks === 0).length;
+  
   return {
+    overallScore: avgScore,
     score: avgScore,
+    totalTrades: checks.length,
     totalChecks: checks.length,
     period: `${periodDays} days`,
-    compliantTrades: checks.filter(c => c.warnings === 0 && c.blocks === 0).length,
+    compliantTrades,
     tradesWithWarnings: checks.filter(c => c.warnings > 0).length,
     blockedTrades: checks.filter(c => !c.tradeAllowed).length
   };

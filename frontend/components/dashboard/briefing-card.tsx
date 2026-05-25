@@ -56,18 +56,20 @@ export function BriefingCard() {
       {expanded && (
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Yesterday</p>
-              <p className="text-sm font-medium">
-                {briefing.yesterdaySummary.message}
-              </p>
-              <p className={cn(
-                'text-lg font-mono-numbers font-semibold',
-                getPnLColor(briefing.yesterdaySummary.pnl)
-              )}>
-                {briefing.yesterdaySummary.pnlFormatted}
-              </p>
-            </div>
+            {briefing.yesterdaySummary && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Yesterday</p>
+                <p className="text-sm font-medium">
+                  {briefing.yesterdaySummary.message}
+                </p>
+                <p className={cn(
+                  'text-lg font-mono-numbers font-semibold',
+                  getPnLColor(briefing.yesterdaySummary.pnl)
+                )}>
+                  {briefing.yesterdaySummary.pnlFormatted}
+                </p>
+              </div>
+            )}
 
             {briefing.bestHours && (
               <div className="space-y-1">
@@ -112,7 +114,7 @@ export function BriefingCard() {
             </>
           )}
 
-          {briefing.focusAreas.length > 0 && (
+          {briefing.focusAreas?.length > 0 && (
             <>
               <Separator />
               <div className="space-y-2">

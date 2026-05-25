@@ -34,7 +34,8 @@ router.get('/tax', auth, async (req, res) => {
 
 /**
  * GET /api/reports/tax/export
- * Export tax report as CSV
+ * Export tax report in various formats
+ * Formats: csv (default), itr (ITR-compatible JSON), schedule-cg (ITR Schedule CG format)
  */
 router.get('/tax/export', auth, async (req, res) => {
   try {
@@ -53,7 +54,23 @@ router.get('/tax/export', auth, async (req, res) => {
       return res.send(csv);
     }
     
-    // For other formats, return JSON (PDF can be generated client-side)
+    if (format === 'itr') {
+      // ITR-compatible JSON format
+      const itrData = taxReportService.exportToITRFormat(report);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="itr-data-${financialYear}.json"`);
+      return res.json(itrData);
+    }
+    
+    if (format === 'schedule-cg') {
+      // Schedule CG CSV for direct ITR upload
+      const scheduleCG = taxReportService.exportScheduleCG(report);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="schedule-cg-${financialYear}.csv"`);
+      return res.send(scheduleCG);
+    }
+    
+    // Default: return full report as JSON
     res.json(report);
   } catch (error) {
     console.error('Tax report export error:', error);
@@ -62,6 +79,43 @@ router.get('/tax/export', auth, async (req, res) => {
       message: error.message 
     });
   }
+});
+
+/**
+ * GET /api/reports/tax-constants
+ * Get current Indian tax rates and thresholds
+ */
+router.get('/tax-constants', auth, (req, res) => {
+  res.json({
+    rates: {
+      stcg: {
+        rate: taxReportService.TAX_CONSTANTS.STCG_RATE,
+        description: 'Short Term Capital Gains on listed equity (Section 111A)',
+        applicableWhen: 'Holding period <= 12 months'
+      },
+      ltcg: {
+        rate: taxReportService.TAX_CONSTANTS.LTCG_RATE,
+        exemption: taxReportService.TAX_CONSTANTS.LTCG_EXEMPTION,
+        description: 'Long Term Capital Gains on listed equity (Section 112A)',
+        applicableWhen: 'Holding period > 12 months'
+      }
+    },
+    businessIncome: {
+      fno: 'Non-speculative - taxed at slab rates, can set off against other income',
+      intraday: 'Speculative - taxed at slab rates, can only set off against speculative income'
+    },
+    auditThresholds: {
+      digitalTurnover: taxReportService.TAX_CONSTANTS.AUDIT_TURNOVER_DIGITAL,
+      lowProfitTurnover: taxReportService.TAX_CONSTANTS.AUDIT_TURNOVER_LOW_PROFIT,
+      minProfitPercent: taxReportService.TAX_CONSTANTS.AUDIT_MIN_PROFIT_PERCENT
+    },
+    carryForward: {
+      capitalLoss: taxReportService.TAX_CONSTANTS.CARRY_FORWARD_CAPITAL_LOSS,
+      businessLoss: taxReportService.TAX_CONSTANTS.CARRY_FORWARD_BUSINESS_LOSS,
+      speculativeLoss: taxReportService.TAX_CONSTANTS.CARRY_FORWARD_SPECULATIVE_LOSS
+    },
+    source: 'Budget 2024-25 (applicable from FY 2024-25)'
+  });
 });
 
 /**

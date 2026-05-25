@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -44,11 +45,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border/50 bg-background px-4 lg:px-6">
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetTrigger>
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Toggle menu</span>
-          </Button>
+        <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" />}>
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle menu</span>
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0">
           <Sidebar />
@@ -59,22 +58,22 @@ export function Header() {
 
       <div className="flex items-center gap-2">
         <DropdownMenu>
-          <DropdownMenuTrigger className="relative">
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-              {alertCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-                >
-                  {alertCount}
-                </Badge>
-              )}
-              <span className="sr-only">Notifications</span>
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" />}>
+            <Bell className="h-5 w-5" />
+            {alertCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+              >
+                {alertCount}
+              </Badge>
+            )}
+            <span className="sr-only">Notifications</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel>Coaching Alerts</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Coaching Alerts</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {alertCount === 0 ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
@@ -99,17 +98,17 @@ export function Header() {
         </DropdownMenu>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="rounded-full">
-            <Button variant="ghost" size="icon">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                  U
-                </AvatarFallback>
-              </Avatar>
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                U
+              </AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/settings')}>
               Settings

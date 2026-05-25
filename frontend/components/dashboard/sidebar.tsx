@@ -13,6 +13,11 @@ import {
   Settings,
   LogOut,
   Receipt,
+  GraduationCap,
+  Upload,
+  Bell,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -25,7 +30,12 @@ const navigation = [
   { name: 'Journal', href: '/journal', icon: PenSquare },
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Edge', href: '/edge', icon: TrendingUp },
+  { name: 'Playbook', href: '/playbook', icon: Target },
   { name: 'Discipline', href: '/discipline', icon: Shield },
+  { name: 'Learn', href: '/learn', icon: GraduationCap },
+  { name: 'Alerts', href: '/alerts', icon: Bell },
+  { name: 'Import', href: '/import', icon: Upload },
   { name: 'Reports', href: '/reports', icon: Receipt },
 ];
 

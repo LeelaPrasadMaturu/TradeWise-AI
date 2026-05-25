@@ -329,3 +329,246 @@ export interface GamePlan {
   }>;
   warnings?: FlashbackWarning[];
 }
+
+// Edge Analysis Types
+export interface EdgeStats {
+  totalTrades: number;
+  closedTrades: number;
+  wins: number;
+  losses: number;
+  breakeven: number;
+  winRate: number;
+  totalPnL: number;
+  avgPnL: number;
+  avgWin: number;
+  avgLoss: number;
+  profitFactor: number | string;
+  expectancy: number;
+  largestWin: number;
+  largestLoss: number;
+}
+
+export interface HourStats extends EdgeStats {
+  hour: number;
+  label: string;
+}
+
+export interface DayStats extends EdgeStats {
+  day: number;
+  dayName: string;
+}
+
+export interface SymbolStats extends EdgeStats {
+  symbol: string;
+}
+
+export interface SetupStats extends EdgeStats {
+  setup: string;
+}
+
+export interface EmotionStats extends EdgeStats {
+  emotion: string;
+}
+
+export interface EdgeAnalysis {
+  periodDays: number;
+  totalTrades: number;
+  overall: EdgeStats;
+  byHour: {
+    all: HourStats[];
+    best: HourStats[];
+    worst: HourStats[];
+    recommendation: string;
+  };
+  byDayOfWeek: {
+    all: DayStats[];
+    best: DayStats[];
+    worst: DayStats[];
+    recommendation: string;
+  };
+  bySymbol: {
+    all: SymbolStats[];
+    mostProfitable: SymbolStats[];
+    leastProfitable: SymbolStats[];
+    recommendation: string;
+  };
+  bySetup: {
+    all: SetupStats[];
+    bestSetups: SetupStats[];
+    worstSetups: SetupStats[];
+    untaggedStats: EdgeStats | null;
+    recommendation: string;
+  };
+  byEmotion: {
+    all: EmotionStats[];
+    bestEmotions: EmotionStats[];
+    worstEmotions: EmotionStats[];
+    recommendation: string;
+  };
+  byDirection: {
+    long: EdgeStats | null;
+    short: EdgeStats | null;
+    recommendation: string;
+  };
+  bySession: {
+    all: Array<EdgeStats & { session: string; timeRange: string }>;
+    best: EdgeStats & { session: string } | null;
+    worst: EdgeStats & { session: string } | null;
+    recommendation: string;
+  };
+  edgeSummary: {
+    overallPnL: number;
+    overallPnLFormatted: string;
+    expectancy: number;
+    profitFactor: number | string;
+    winRate: number;
+    strengths: string[];
+    weaknesses: string[];
+    primaryEdge: string;
+    focusArea: string;
+  };
+}
+
+// Time-in-Trade Alert Types
+export interface TimeAlert {
+  tradeId: string;
+  symbol: string;
+  direction: string;
+  entryPrice: number;
+  entryTime: string;
+  holdMinutes: number;
+  avgHoldMinutes: number;
+  exceedsByMinutes: number;
+  exceedsByPercent: number;
+  severity: 'warning' | 'high' | 'critical';
+  unrealizedPnL: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
+  message: string;
+}
+
+export interface TimeAlertResponse {
+  alerts: TimeAlert[];
+  tradingStyle: string;
+  avgHoldMinutes: number;
+  alertThresholdMinutes: number;
+  totalOpenTrades: number;
+  overheldCount: number;
+}
+
+export interface HoldTimeAnalysis {
+  periodDays: number;
+  totalTrades: number;
+  winners: {
+    count: number;
+    avgMinutes: number;
+    medianMinutes: number;
+    minMinutes: number;
+    maxMinutes: number;
+  } | null;
+  losers: {
+    count: number;
+    avgMinutes: number;
+    medianMinutes: number;
+    minMinutes: number;
+    maxMinutes: number;
+  } | null;
+  lossAversionRatio: number | null;
+  lossAversionMessage: string;
+  recommendation: string;
+}
+
+// Playbook Types
+export interface SetupMatchCriteria {
+  keywords: string[];
+  symbols: string[];
+  direction: 'long' | 'short' | 'both';
+  validHours?: {
+    start: number;
+    end: number;
+  };
+  tags: string[];
+}
+
+export interface SetupRules {
+  requireStopLoss?: boolean;
+  requireTakeProfit?: boolean;
+  minRiskReward?: number;
+  maxPositionPercent?: number;
+}
+
+export interface SetupChecklist {
+  question: string;
+  required: boolean;
+}
+
+export interface PlaybookSetup {
+  _id: string;
+  name: string;
+  description?: string;
+  matchCriteria: SetupMatchCriteria;
+  rules: SetupRules;
+  checklist: SetupChecklist[];
+  stats: {
+    totalTrades: number;
+    wins: number;
+    losses: number;
+    breakeven: number;
+    totalPnL: number;
+    avgPnL: number;
+    avgWin: number;
+    avgLoss: number;
+    winRate: number;
+    profitFactor: number;
+    lastUpdated: string;
+  };
+  enabled: boolean;
+  color: string;
+  icon: string;
+  order: number;
+}
+
+export interface Playbook {
+  _id: string;
+  user: string;
+  name: string;
+  description?: string;
+  setups: PlaybookSetup[];
+  settings: {
+    autoTagEnabled: boolean;
+    requireSetupMatch: boolean;
+    trackUnmatchedTrades: boolean;
+  };
+  unmatchedStats: {
+    totalTrades: number;
+    wins: number;
+    losses: number;
+    totalPnL: number;
+    winRate: number;
+  };
+}
+
+export interface SetupComparison {
+  setups: Array<{
+    id: string;
+    name: string;
+    color: string;
+    totalTrades: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    totalPnL: number;
+    avgPnL: number;
+    profitFactor: number;
+  }>;
+  summary: {
+    totalSetups: number;
+    profitableSetups: number;
+    unprofitableSetups: number;
+    totalTrades: number;
+    totalPnL: number;
+    bestSetup: { name: string; winRate: number } | null;
+    worstSetup: { name: string; winRate: number } | null;
+  };
+  recommendation: string;
+}

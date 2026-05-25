@@ -1,18 +1,22 @@
 const axios = require('axios');
 const constants = require('../config/constants');
 
-// Map of FinBERT sentiments to trading-specific emotions
-const emotionMap = {
+// Map of FinBERT sentiments to schema-valid values
+// detected: must be 'positive', 'negative', or 'neutral'
+// emotionType: can be specific emotions like 'confidence', 'fear', 'fomo'
+const sentimentToEmotionType = {
   'positive': 'confidence',
   'negative': 'fear',
   'neutral': 'neutral'
 };
 
 // Trading-specific keyword-based emotion detection as fallback
+// Returns detected as 'positive', 'negative', or 'neutral' (schema-valid)
+// Returns emotionType as specific emotion like 'confidence', 'fear', 'fomo'
 const detectEmotionFromKeywords = (text) => {
   const keywords = {
-    confidence: ['bullish', 'breakout', 'trend', 'momentum', 'support', 'resistance', 'accumulation', 'strong', 'opportunity', 'potential'],
-    fear: ['bearish', 'breakdown', 'reversal', 'weak', 'sell', 'risk', 'uncertain', 'volatile', 'fomo', 'miss out', 'late', 'rushing', 'hurry', 'anxious'],
+    positive: ['bullish', 'breakout', 'trend', 'momentum', 'support', 'resistance', 'accumulation', 'strong', 'opportunity', 'potential'],
+    negative: ['bearish', 'breakdown', 'reversal', 'weak', 'sell', 'risk', 'uncertain', 'volatile', 'fomo', 'miss out', 'late', 'rushing', 'hurry', 'anxious'],
     neutral: ['consolidation', 'range', 'sideways', 'wait', 'observe', 'monitor', 'plan', 'strategy']
   };
 
@@ -26,19 +30,20 @@ const detectEmotionFromKeywords = (text) => {
       lowerText.includes('hurry') ||
       lowerText.includes('anxious')) {
     return {
-      detected: 'fear',
+      detected: 'negative',
       confidence: 0.8,
       source: 'keyword',
       emotionType: 'fomo'
     };
   }
 
-  for (const [emotion, words] of Object.entries(keywords)) {
+  for (const [sentiment, words] of Object.entries(keywords)) {
     if (words.some(word => lowerText.includes(word))) {
       return {
-        detected: emotion,
+        detected: sentiment,
         confidence: 0.7,
-        source: 'keyword'
+        source: 'keyword',
+        emotionType: sentimentToEmotionType[sentiment]
       };
     }
   }
@@ -46,7 +51,8 @@ const detectEmotionFromKeywords = (text) => {
   return {
     detected: 'neutral',
     confidence: 0.5,
-    source: 'keyword'
+    source: 'keyword',
+    emotionType: 'neutral'
   };
 };
 
@@ -86,12 +92,11 @@ function extractTagsFromReason(reason) {
     }
   }
 
-  // Add emotion-based tags
+  // Add emotion-based tags (use emotionType for more specific tags)
   const emotionAnalysis = detectEmotionFromKeywords(reason);
-  if (emotionAnalysis.emotionType) {
+  if (emotionAnalysis.emotionType && emotionAnalysis.emotionType !== 'neutral') {
     extractedTags.add(emotionAnalysis.emotionType);
   }
-  extractedTags.add(emotionAnalysis.detected);
 
   return Array.from(extractedTags);
 }
@@ -140,12 +145,17 @@ async function analyzeEmotion(text) {
     const confidence = parseFloat(topSentiment[1]);
     const validConfidence = isNaN(confidence) ? 0.5 : Math.max(0, Math.min(1, confidence));
     
+    // FinBERT returns 'positive', 'negative', or 'neutral' which are valid enum values
+    const detectedSentiment = ['positive', 'negative', 'neutral'].includes(topSentiment[0]) 
+      ? topSentiment[0] 
+      : 'neutral';
+    
     return {
-      detected: emotionMap[topSentiment[0]] || 'neutral',
+      detected: detectedSentiment,
       confidence: validConfidence,
       source: 'finbert',
       rawSentiment: topSentiment[0],
-      emotionType: isFOMO ? 'fomo' : undefined
+      emotionType: isFOMO ? 'fomo' : sentimentToEmotionType[detectedSentiment]
     };
   } catch (error) {
     console.error('Error in emotion detection:', error.message);

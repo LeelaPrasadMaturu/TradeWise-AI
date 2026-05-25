@@ -4,6 +4,7 @@ import { QuickStats } from '@/components/dashboard/quick-stats';
 import { RecentTrades } from '@/components/dashboard/recent-trades';
 import { BriefingCard } from '@/components/dashboard/briefing-card';
 import { CoachingAlerts } from '@/components/dashboard/coaching-alerts';
+import { GamePlan } from '@/components/dashboard/game-plan';
 
 export default function DashboardPage() {
   return (
@@ -19,9 +20,14 @@ export default function DashboardPage() {
 
       <QuickStats />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <RecentTrades />
-        <CoachingAlerts />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RecentTrades />
+        </div>
+        <div className="space-y-6">
+          <GamePlan />
+          <CoachingAlerts />
+        </div>
       </div>
     </div>
   );

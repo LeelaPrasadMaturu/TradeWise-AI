@@ -103,7 +103,7 @@ router.get('/patterns', auth, async (req, res) => {
     const analysis = await analyzeAllPatterns(req.user._id, periodDays);
     
     // Apply filters if provided
-    let filteredPatterns = analysis.patternsDetected;
+    let filteredPatterns = analysis?.patternsDetected || [];
     
     if (type) {
       filteredPatterns = filteredPatterns.filter(p => 
@@ -118,6 +118,7 @@ router.get('/patterns', auth, async (req, res) => {
     res.json({
       ...analysis,
       patternsDetected: filteredPatterns,
+      positivePatterns: analysis?.positivePatterns || [],
       filters: { period, type, severity }
     });
   } catch (error) {
@@ -146,8 +147,11 @@ router.get('/summary', auth, async (req, res) => {
   try {
     const analysis = await analyzeAllPatterns(req.user._id, 30);
     
+    // Ensure patternsDetected is an array
+    const patternsDetected = analysis?.patternsDetected || [];
+    
     // Get top 3 most impactful patterns
-    const topPatterns = analysis.patternsDetected
+    const topPatterns = patternsDetected
       .filter(p => p.severity === 'high' || p.severity === 'medium')
       .slice(0, 3)
       .map(p => ({
@@ -158,32 +162,36 @@ router.get('/summary', auth, async (req, res) => {
       }));
     
     // Calculate total cost of bad patterns
-    const totalPatternCost = analysis.patternsDetected.reduce((sum, p) => 
+    const totalPatternCost = patternsDetected.reduce((sum, p) => 
       sum + (p.costEstimate?.directCost || 0), 0
     );
     
+    const positivePatterns = analysis?.positivePatterns || [];
+    const recommendations = analysis?.recommendations || [];
+    const baseline = analysis?.baseline || {};
+    
     res.json({
       success: true,
-      behavioralScore: analysis.behavioralScore,
-      tradingStyle: analysis.tradingStyle,
-      styleConfidence: analysis.styleConfidence,
-      period: analysis.period,
-      tradeCount: analysis.tradeCount,
+      behavioralScore: analysis?.behavioralScore || 0,
+      tradingStyle: analysis?.tradingStyle || 'unknown',
+      styleConfidence: analysis?.styleConfidence || 0,
+      period: analysis?.period || '30 days',
+      tradeCount: analysis?.tradeCount || 0,
       summary: {
-        totalPatternsDetected: analysis.patternsDetected.length,
-        highSeverity: analysis.patternsDetected.filter(p => p.severity === 'high').length,
-        mediumSeverity: analysis.patternsDetected.filter(p => p.severity === 'medium').length,
-        positivePatterns: analysis.positivePatterns.length,
+        totalPatternsDetected: patternsDetected.length,
+        highSeverity: patternsDetected.filter(p => p.severity === 'high').length,
+        mediumSeverity: patternsDetected.filter(p => p.severity === 'medium').length,
+        positivePatterns: positivePatterns.length,
         estimatedCostFromPatterns: totalPatternCost
       },
       topIssues: topPatterns,
-      positivePatterns: analysis.positivePatterns,
-      recommendations: analysis.recommendations.slice(0, 3),
+      positivePatterns: positivePatterns,
+      recommendations: recommendations.slice(0, 3),
       baseline: {
-        winRate: analysis.baseline.baselineWinRate,
-        avgDailyTrades: analysis.baseline.avgDailyTradeCount,
-        bestHours: analysis.baseline.bestPerformingHours,
-        worstHours: analysis.baseline.worstPerformingHours
+        winRate: baseline.baselineWinRate || 0,
+        avgDailyTrades: baseline.avgDailyTradeCount || 0,
+        bestHours: baseline.bestPerformingHours || [],
+        worstHours: baseline.worstPerformingHours || []
       }
     });
   } catch (error) {
@@ -229,8 +237,9 @@ router.get('/pattern/:type', auth, async (req, res) => {
     const periodDays = parseInt(period.replace('d', '')) || 30;
     
     const analysis = await analyzeAllPatterns(req.user._id, periodDays);
+    const patternsDetected = analysis?.patternsDetected || [];
     
-    const patternInstances = analysis.patternsDetected.filter(p => 
+    const patternInstances = patternsDetected.filter(p => 
       p.type.toLowerCase() === type.toLowerCase() ||
       p.type.toLowerCase().includes(type.toLowerCase())
     );

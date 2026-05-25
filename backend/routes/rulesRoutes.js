@@ -8,7 +8,7 @@ const router = express.Router();
 const auth = require('../middlewares/authMiddleware');
 const TradingRule = require('../models/TradingRule');
 const UserTradingConfig = require('../models/UserTradingConfig');
-const { validateTrade } = require('../services/ruleValidationService');
+const { validateTrade, evaluateRulesRetroactively } = require('../services/ruleValidationService');
 
 // ============================================
 // TRADING RULES ENDPOINTS
@@ -103,6 +103,17 @@ router.post('/templates/:templateName/apply', auth, async (req, res) => {
       }
     }
     
+    // Evaluate rules retroactively on existing trades
+    if (createdRules.length > 0) {
+      evaluateRulesRetroactively(req.user._id, { forceRecheck: true })
+        .then(result => {
+          console.log(`Retroactive evaluation for template "${templateName}": ${result.processed} trades, ${result.created} checks created`);
+        })
+        .catch(err => {
+          console.error('Retroactive evaluation error:', err.message);
+        });
+    }
+    
     res.status(201).json({
       success: true,
       message: `Applied template "${templateName}"`,
@@ -183,6 +194,15 @@ router.post('/', auth, async (req, res) => {
     
     await rule.save();
     
+    // Evaluate rules retroactively on existing trades (async, don't wait)
+    evaluateRulesRetroactively(req.user._id, { forceRecheck: true })
+      .then(result => {
+        console.log(`Retroactive evaluation for new rule: ${result.processed} trades, ${result.created} checks created`);
+      })
+      .catch(err => {
+        console.error('Retroactive evaluation error:', err.message);
+      });
+    
     res.status(201).json({
       success: true,
       message: 'Rule created successfully',
@@ -227,6 +247,17 @@ router.patch('/:id', auth, async (req, res) => {
     
     await rule.save();
     
+    // Evaluate rules retroactively if rule was enabled or params changed
+    if (enabled === true || params !== undefined) {
+      evaluateRulesRetroactively(req.user._id, { forceRecheck: true })
+        .then(result => {
+          console.log(`Retroactive evaluation for updated rule: ${result.processed} trades, ${result.created} checks created`);
+        })
+        .catch(err => {
+          console.error('Retroactive evaluation error:', err.message);
+        });
+    }
+    
     res.json({
       success: true,
       message: 'Rule updated successfully',
@@ -261,6 +292,17 @@ router.post('/:id/toggle', auth, async (req, res) => {
     
     rule.enabled = !rule.enabled;
     await rule.save();
+    
+    // Evaluate rules retroactively when rule is enabled
+    if (rule.enabled) {
+      evaluateRulesRetroactively(req.user._id, { forceRecheck: true })
+        .then(result => {
+          console.log(`Retroactive evaluation for toggled rule: ${result.processed} trades, ${result.created} checks created`);
+        })
+        .catch(err => {
+          console.error('Retroactive evaluation error:', err.message);
+        });
+    }
     
     res.json({
       success: true,
@@ -567,6 +609,46 @@ router.post('/validate', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to validate trade'
+    });
+  }
+});
+
+/**
+ * POST /api/rules/evaluate-retroactively
+ * Manually trigger retroactive rule evaluation on all existing trades
+ */
+router.post('/evaluate-retroactively', auth, async (req, res) => {
+  try {
+    const { periodDays = 90, forceRecheck = true } = req.body;
+    
+    // Check if user has any enabled rules
+    const rulesCount = await TradingRule.countDocuments({
+      user: req.user._id,
+      enabled: true
+    });
+    
+    if (rulesCount === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No enabled rules to evaluate. Please create and enable at least one discipline rule first.'
+      });
+    }
+    
+    const result = await evaluateRulesRetroactively(req.user._id, {
+      periodDays,
+      forceRecheck
+    });
+    
+    res.json({
+      success: true,
+      message: `Evaluated ${result.processed} trades against ${result.rulesEvaluated} rules`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error in retroactive evaluation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to evaluate rules retroactively'
     });
   }
 });
