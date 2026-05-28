@@ -1,0 +1,29 @@
+trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion,notes
+2026-05-11,09:35:00,NSE,RELIANCE,buy,30,2820.00,260511001,T260511001,15min ema crossover with volume confirmation,target 1 hit,2795.00,2860.00,ema_cross,calm,waited for confirmation before entry
+2026-05-11,10:45:00,NSE,RELIANCE,sell,30,2855.00,260511002,T260511002,,trailed stop and target hit,,,,confident,plan worked perfectly
+2026-05-11,11:30:00,NSE,TCS,buy,25,4260.00,260511003,T260511003,support bounce with rsi oversold,partial target,4235.00,4300.00,support_rsi,calm,risk reward was 1:2 good setup
+2026-05-11,13:00:00,NSE,TCS,sell,25,4295.00,260511004,T260511004,,near target booked 80%,,,,neutral,following the plan no greed
+2026-05-11,14:00:00,NSE,HDFCBANK,buy,35,1725.00,260511005,T260511005,breakout retest entry,target hit,1710.00,1755.00,breakout_retest,focused,classic pattern waiting paid off
+2026-05-11,15:00:00,NSE,HDFCBANK,sell,35,1752.00,260511006,T260511006,,full target achieved,,,,confident,another textbook trade
+2026-05-12,09:45:00,NSE,INFY,buy,40,1880.00,260512001,T260512001,morning range breakout setup,sl hit ok,1865.00,1910.00,range_break,calm,position sized for 1% risk
+2026-05-12,10:30:00,NSE,INFY,sell,40,1862.00,260512002,T260512002,,stopped out false breakout,,,,neutral,loss is part of trading moved on
+2026-05-12,11:15:00,NSE,SBIN,buy,80,940.00,260512003,T260512003,sector rotation into psu banks volume spike,target reached,928.00,960.00,sector_rotation,focused,followed my watchlist
+2026-05-12,13:30:00,NSE,SBIN,sell,80,958.00,260512004,T260512004,,target hit perfect,,,,confident,2 wins 1 loss today good ratio
+2026-05-12,14:30:00,NSE,ICICIBANK,buy,45,1135.00,260512005,T260512005,vwap bounce with bullish candle,profit taken,1122.00,1155.00,vwap,calm,end of day simple trade
+2026-05-12,15:10:00,NSE,ICICIBANK,sell,45,1150.00,260512006,T260512006,,near target closing position,,,,neutral,done for today no overtrading
+2026-05-13,09:50:00,NSE,TATAMOTORS,buy,50,1175.00,260513001,T260513001,gap fill trade morning dip buy,target 1,1160.00,1200.00,gap_fill,calm,high probability setup
+2026-05-13,11:15:00,NSE,TATAMOTORS,sell,50,1195.00,260513002,T260513002,,partial exit at target,,,,confident,following rules
+2026-05-13,12:30:00,NSE,WIPRO,buy,60,605.00,260513003,T260513003,it sector strong chart pattern,full target,595.00,625.00,sector_strength,focused,higher timeframe trend aligned
+2026-05-13,14:00:00,NSE,WIPRO,sell,60,622.00,260513004,T260513004,,target achieved,,,,confident,clean trade
+2026-05-13,14:45:00,NSE,BAJFINANCE,buy,12,7500.00,260513005,T260513005,pullback to 20ema in uptrend,trailed stop,7420.00,7620.00,ema_pullback,calm,trend continuation setup
+2026-05-13,15:15:00,NSE,BAJFINANCE,sell,12,7580.00,260513006,T260513006,,near target end of day,,,,neutral,good day 3 wins no losses
+2026-05-14,10:00:00,NSE,ASIANPAINT,buy,25,2980.00,260514001,T260514001,demand zone bounce with volume,stopped out,2955.00,3020.00,demand_zone,calm,setup was valid market said no
+2026-05-14,11:30:00,NSE,ASIANPAINT,sell,25,2950.00,260514002,T260514002,,sl hit accepted the loss,,,,neutral,cant win every trade
+2026-05-14,12:30:00,NSE,RELIANCE,buy,28,2835.00,260514003,T260514003,afternoon session breakout,target hit,2815.00,2870.00,breakout,focused,second half often has clean moves
+2026-05-14,14:15:00,NSE,RELIANCE,sell,28,2868.00,260514004,T260514004,,full target reached,,,,confident,recovered the morning loss
+2026-05-14,14:45:00,NSE,MARUTI,buy,8,10750.00,260514005,T260514005,relative strength in auto sector,closed green,10650.00,10900.00,relative_strength,calm,high priced stock but sized correctly
+2026-05-14,15:15:00,NSE,MARUTI,sell,8,10850.00,260514006,T260514006,,booked profit before close,,,,neutral,ended week on positive note
+2026-05-15,09:40:00,NSE,HDFCBANK,buy,30,1745.00,260515001,T260515001,morning star pattern on 15min,target hit,1730.00,1775.00,candle_pattern,focused,candlestick patterns working well lately
+2026-05-15,11:30:00,NSE,HDFCBANK,sell,30,1772.00,260515002,T260515002,,pattern target achieved,,,,confident,technical analysis is key
+2026-05-15,12:15:00,NSE,TCS,buy,20,4290.00,260515003,T260515003,trendline bounce it sector bullish,profit taken,4265.00,4330.00,trendline,calm,clean setup with good rr
+2026-05-15,14:00:00,NSE,TCS,sell,20,4325.00,260515004,T260515004,,target reached,,,,neutral,consistent execution is the key

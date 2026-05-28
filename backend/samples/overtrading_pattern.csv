@@ -1,0 +1,33 @@
+trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion,notes
+2026-05-06,09:16:00,NSE,RELIANCE,buy,25,2800.00,260506001,T260506001,gap up momentum,quick scalp,2790.00,2815.00,scalp,excited,market opening strong lets go
+2026-05-06,09:22:00,NSE,RELIANCE,sell,25,2810.00,260506002,T260506002,,booked profit,,,,excited,easy money
+2026-05-06,09:25:00,NSE,TCS,buy,20,4220.00,260506003,T260506003,tcs also moving,small profit ok,,4240.00,scalp,excited,everything moving today
+2026-05-06,09:32:00,NSE,TCS,sell,20,4235.00,260506004,T260506004,,done,,,,confident,two wins in row
+2026-05-06,09:35:00,NSE,INFY,buy,50,1860.00,260506005,T260506005,infy breakout,took profit,1850.00,1880.00,breakout,confident,hat trick loading
+2026-05-06,09:48:00,NSE,INFY,sell,50,1872.00,260506006,T260506006,,target almost hit,,,,excited,3 for 3
+2026-05-06,09:52:00,NSE,HDFCBANK,buy,40,1695.00,260506007,T260506007,banking strong,scalped out,1685.00,1710.00,scalp,excited,cant miss any opportunity
+2026-05-06,10:05:00,NSE,HDFCBANK,sell,40,1702.00,260506008,T260506008,,quick exit,,,,confident,4 wins today
+2026-05-06,10:08:00,NSE,SBIN,buy,100,925.00,260506009,T260506009,sbi lagging will catch up,sl hit damn,920.00,935.00,catchup,confident,psu banks turn
+2026-05-06,10:22:00,NSE,SBIN,sell,100,918.00,260506010,T260506010,,stopped out,,,,frustrated,first loss of day
+2026-05-06,10:25:00,NSE,ICICIBANK,buy,60,1125.00,260506011,T260506011,icici chart good,small loss,1118.00,1140.00,chart_pattern,impatient,need to recover sbi loss
+2026-05-06,10:38:00,NSE,ICICIBANK,sell,60,1120.00,260506012,T260506012,,cut loss early,,,,anxious,not working
+2026-05-06,10:42:00,NSE,WIPRO,buy,80,595.00,260506013,T260506013,wipro support,quick exit,590.00,605.00,support_buy,anxious,just need one good trade
+2026-05-06,10:55:00,NSE,WIPRO,sell,80,598.00,260506014,T260506014,,small win,,,,neutral,ok better
+2026-05-06,11:00:00,NSE,TATAMOTORS,buy,70,1155.00,260506015,T260506015,auto looking good,profit,1145.00,1170.00,sector_play,confident,back on track
+2026-05-06,11:18:00,NSE,TATAMOTORS,sell,70,1165.00,260506016,T260506016,,done,,,,excited,nice recovery
+2026-05-06,11:22:00,NSE,MARUTI,buy,10,10600.00,260506017,T260506017,maruti also auto,sl hit,10500.00,10750.00,sector_play,excited,auto rally
+2026-05-06,11:40:00,NSE,MARUTI,sell,10,10480.00,260506018,T260506018,,big loss,,,,frustrated,should have sized smaller
+2026-05-06,11:45:00,NSE,BAJFINANCE,buy,15,7400.00,260506019,T260506019,baj finance dip buy,small profit,7350.00,7500.00,dip_buy,impatient,finance names moving
+2026-05-06,12:10:00,NSE,BAJFINANCE,sell,15,7420.00,260506020,T260506020,,exited early,,,,neutral,atleast green
+2026-05-06,12:15:00,NSE,ASIANPAINT,buy,30,2950.00,260506021,T260506021,asian paint range breakout,stopped,2930.00,2990.00,breakout,confident,consumption story
+2026-05-06,12:35:00,NSE,ASIANPAINT,sell,30,2925.00,260506022,T260506022,,sl hit,,,,frustrated,false breakout
+2026-05-06,12:40:00,NSE,RELIANCE,buy,30,2815.00,260506023,T260506023,reliance again second round,target,2800.00,2840.00,scalp,anxious,back to what worked
+2026-05-06,13:05:00,NSE,RELIANCE,sell,30,2835.00,260506024,T260506024,,profit taken,,,,confident,reliance never fails
+2026-05-06,13:10:00,NSE,NIFTY26MAY23100CE,buy,50,290.00,260506025,T260506025,nifty breakout calls,loss,260.00,340.00,options,fomo,index looks bullish
+2026-05-06,13:45:00,NSE,NIFTY26MAY23100CE,sell,50,255.00,260506026,T260506026,,premium decay,,,,anxious,options timing wrong
+2026-05-06,13:50:00,NSE,HDFCBANK,buy,35,1700.00,260506027,T260506027,hdfc afternoon trade,small win,1690.00,1715.00,scalp,neutral,simple trade
+2026-05-06,14:15:00,NSE,HDFCBANK,sell,35,1708.00,260506028,T260506028,,profit,,,,confident,consistent scalping
+2026-05-06,14:20:00,NSE,TCS,buy,25,4240.00,260506029,T260506029,tcs still in trend,exited,4225.00,4270.00,trend,impatient,it names strong
+2026-05-06,14:45:00,NSE,TCS,sell,25,4250.00,260506030,T260506030,,took profit,,,,neutral,decent day overall
+2026-05-06,14:50:00,NSE,INFY,buy,40,1875.00,260506031,T260506031,last infy trade,closing position,1865.00,1895.00,momentum,tired,final trade of day
+2026-05-06,15:15:00,NSE,INFY,sell,40,1880.00,260506032,T260506032,,closing green,,,,tired,too many trades today feeling exhausted

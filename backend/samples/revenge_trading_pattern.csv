@@ -1,0 +1,23 @@
+trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion,notes
+2026-05-04,09:18:00,NSE,RELIANCE,buy,30,2780.00,260504001,T260504001,breakout above 2775 level,target hit,2750.00,2820.00,breakout,confident,morning setup looked clean
+2026-05-04,09:45:00,NSE,RELIANCE,sell,30,2820.00,260504002,T260504002,,,,,,confident,good start to the day
+2026-05-04,10:15:00,NSE,TATAMOTORS,buy,100,1150.00,260504003,T260504003,bullish candle on 5min chart,sl hit damn,1130.00,1180.00,momentum,confident,feeling good after last win
+2026-05-04,10:35:00,NSE,TATAMOTORS,sell,100,1125.00,260504004,T260504004,,sl triggered too early,,,,frustrated,market took my stop and reversed
+2026-05-04,10:38:00,NSE,TATAMOTORS,buy,200,1128.00,260504005,T260504005,it will come back i know it,just exited loss is too much,,1160.00,,revenge,will recover my loss
+2026-05-04,11:05:00,NSE,TATAMOTORS,sell,200,1110.00,260504006,T260504006,,panic exit more loss,,,,fearful,why i took this trade bigger size also
+2026-05-04,11:10:00,NSE,SBIN,buy,300,920.00,260504007,T260504007,banking looking strong will recover,stopped out again,,950.00,,revenge,need to make back money
+2026-05-04,11:32:00,NSE,SBIN,sell,300,908.00,260504008,T260504008,,manual exit big loss,,,,anxious,this is not my day
+2026-05-04,11:40:00,NSE,HDFCBANK,buy,150,1680.00,260504009,T260504009,hdfc will save me today,exited with small profit,1660.00,1710.00,,frustrated,just take anything positive
+2026-05-04,12:05:00,NSE,HDFCBANK,sell,150,1690.00,260504010,T260504010,,early exit scared of more loss,,,,fearful,atleast some green
+2026-05-04,13:00:00,NSE,NIFTY26MAY23000CE,buy,100,320.00,260504011,T260504011,nifty recovering will buy calls,premium decay killing me,280.00,380.00,options,fomo,options will give quick money
+2026-05-04,14:15:00,NSE,NIFTY26MAY23000CE,sell,100,260.00,260504012,T260504012,,theta eating premium,,,,anxious,options are dangerous for me
+2026-05-04,14:25:00,NSE,RELIANCE,buy,50,2790.00,260504013,T260504013,reliance was good morning maybe again,nothing working today,,2830.00,,impatient,last trade of day need to recover
+2026-05-04,15:10:00,NSE,RELIANCE,sell,50,2775.00,260504014,T260504014,,closing loss,,,,tired,worst day of trading
+2026-05-05,09:20:00,NSE,TCS,buy,40,4200.00,260505001,T260505001,gap up opening buy the dip,target hit,4170.00,4250.00,gap_play,neutral,fresh day fresh start
+2026-05-05,10:30:00,NSE,TCS,sell,40,4255.00,260505002,T260505002,,profit booked,,,,confident,nice trade
+2026-05-05,11:00:00,NSE,INFY,buy,80,1850.00,260505003,T260505003,it sector strong infy support,sl hit,1830.00,1890.00,support_buy,confident,sector rotation happening
+2026-05-05,11:45:00,NSE,INFY,sell,80,1825.00,260505004,T260505004,,stopped out loss,,,,frustrated,same story again
+2026-05-05,11:50:00,NSE,INFY,buy,150,1828.00,260505005,T260505005,it will reverse from here,bigger loss not again,,1860.00,,revenge,doubling down
+2026-05-05,12:30:00,NSE,INFY,sell,150,1810.00,260505006,T260505006,,panic selling,,,,fearful,should have stayed out
+2026-05-05,12:35:00,NSE,WIPRO,buy,200,590.00,260505007,T260505007,wipro cheap lets try,small loss ok,580.00,610.00,,anxious,just trying anything now
+2026-05-05,13:15:00,NSE,WIPRO,sell,200,582.00,260505008,T260505008,,another loss,,,,tired,cant trade today
