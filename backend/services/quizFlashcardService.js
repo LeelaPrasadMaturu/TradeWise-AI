@@ -11,93 +11,47 @@ async function analyzeUserTradingPatterns(userId, lookbackDays = 90) {
   const trades = await Trade.find({
     user: userId,
     tradeDate: { $gte: startDate }
-  }).sort({ tradeDate: -1 });
+  }).sort({ tradeDate: -1 }).limit(7);
 
   if (trades.length === 0) {
     return null;
   }
 
-  // Analyze losing trades for common mistakes
   const losingTrades = trades.filter(t => t.result === 'loss');
   const winningTrades = trades.filter(t => t.result === 'win');
 
-  // Extract patterns
+  const compactTrades = trades.map(t => ({
+    sym: t.symbol,
+    d: t.direction,
+    pl: t.profitLoss,
+    r: t.result,
+    em: t.emotionAnalysis?.detected || null,
+    tags: t.tags?.slice(0, 3) || [],
+    noSL: !t.stopLoss,
+    noTP: !t.takeProfit
+  }));
+
   const patterns = {
-    // Emotion patterns
+    compactTrades,
     emotionInLosses: losingTrades.map(t => t.emotionAnalysis?.detected).filter(Boolean),
     emotionInWins: winningTrades.map(t => t.emotionAnalysis?.detected).filter(Boolean),
-    preTradeEmotionInLosses: losingTrades.map(t => t.preTradeEmotion).filter(Boolean),
-    preTradeEmotionInWins: winningTrades.map(t => t.preTradeEmotion).filter(Boolean),
-    
-    // Tag patterns
     tagsInLosses: losingTrades.flatMap(t => t.tags || []),
     tagsInWins: winningTrades.flatMap(t => t.tags || []),
-    
-    // Common mistakes from post-trade reviews
-    commonMistakes: losingTrades
-      .map(t => t.postTradeReview?.mistakes)
-      .filter(Boolean),
-    
-    // Lessons learned
-    lessonsLearned: trades
-      .map(t => t.postTradeReview?.lessons)
-      .filter(Boolean),
-    
-    // AI insights from post-trade analysis
-    aiRecommendations: trades
-      .filter(t => t.postTradeAnalysis?.recommendations)
-      .flatMap(t => t.postTradeAnalysis.recommendations),
-    
-    // Risk management issues
+    commonMistakes: losingTrades.map(t => t.postTradeReview?.mistakes).filter(Boolean),
     tradesWithoutStopLoss: trades.filter(t => !t.stopLoss).length,
     tradesWithoutTakeProfit: trades.filter(t => !t.takeProfit).length,
-    
-    // DISCIPLINE PATTERNS - Critical for learning
     disciplineIssues: {
       movedSLDown: trades.filter(t => t.movedStopLossDown).length,
-      movedSLDownAndLost: trades.filter(t => t.movedStopLossDown && t.result === 'loss').length,
       earlyExits: trades.filter(t => t.earlyExit?.exitedBeforeTarget).length,
-      earlyExitReasons: trades
-        .filter(t => t.earlyExit?.exitReason)
-        .map(t => t.earlyExit.exitReason),
-      slMovementReasons: trades
-        .filter(t => t.stopLossMovementReason)
-        .map(t => t.stopLossMovementReason)
     },
-    
-    // Performance metrics
     winRate: winningTrades.length / trades.length * 100,
     avgProfitLoss: trades.reduce((sum, t) => sum + (t.profitLoss || 0), 0) / trades.length,
-    
-    // Specific problematic trades
-    worstTrades: losingTrades
-      .sort((a, b) => (a.profitLoss || 0) - (b.profitLoss || 0))
-      .slice(0, 3)
-      .map(t => ({
-        symbol: t.symbol,
-        date: t.tradeDate,
-        loss: t.profitLoss,
-        reason: t.reason,
-        exitReason: t.exitReason,
-        emotion: t.emotionAnalysis?.detected,
-        tags: t.tags,
-        mistakes: t.postTradeReview?.mistakes,
-        movedSLDown: t.movedStopLossDown || false,
-        earlyExit: t.earlyExit?.exitedBeforeTarget || false
-      })),
-    
-    // Best trades for positive reinforcement
-    bestTrades: winningTrades
-      .sort((a, b) => (b.profitLoss || 0) - (a.profitLoss || 0))
-      .slice(0, 3)
-      .map(t => ({
-        symbol: t.symbol,
-        date: t.tradeDate,
-        profit: t.profitLoss,
-        reason: t.reason,
-        emotion: t.emotionAnalysis?.detected,
-        tags: t.tags
-      }))
+    worstTrade: losingTrades.sort((a, b) => (a.profitLoss || 0) - (b.profitLoss || 0))[0]
+      ? { sym: losingTrades[0].symbol, loss: losingTrades[0].profitLoss }
+      : null,
+    bestTrade: winningTrades.sort((a, b) => (b.profitLoss || 0) - (a.profitLoss || 0))[0]
+      ? { sym: winningTrades[0].symbol, profit: winningTrades[0].profitLoss }
+      : null,
   };
 
   return patterns;
@@ -126,35 +80,26 @@ async function generatePersonalizedQuiz(userId, options = {}) {
 
     // Build context for Gemini
     const quizContext = {
-      userStats: {
-        totalTrades: patterns.emotionInLosses.length + patterns.emotionInWins.length,
+      trades: patterns.compactTrades,
+      stats: {
         winRate: patterns.winRate.toFixed(2),
-        avgProfitLoss: patterns.avgProfitLoss.toFixed(2)
+        avgPL: patterns.avgProfitLoss.toFixed(2),
+        missingSL: patterns.tradesWithoutStopLoss,
+        missingTP: patterns.tradesWithoutTakeProfit,
+        slMoved: patterns.disciplineIssues.movedSLDown,
+        earlyExits: patterns.disciplineIssues.earlyExits
       },
-      weaknesses: {
-        emotionalPatterns: getMostCommon(patterns.emotionInLosses),
-        preTradeEmotionsInLosses: getMostCommon(patterns.preTradeEmotionInLosses),
-        problematicTags: getMostCommon(patterns.tagsInLosses),
-        commonMistakes: patterns.commonMistakes.slice(0, 5),
-        // DISCIPLINE ISSUES - Important for quiz generation
-        disciplineProblems: {
-          movedSLDown: patterns.disciplineIssues.movedSLDown,
-          lostAfterMovingSL: patterns.disciplineIssues.movedSLDownAndLost,
-          earlyExits: patterns.disciplineIssues.earlyExits,
-          topEarlyExitReasons: getMostCommon(patterns.disciplineIssues.earlyExitReasons),
-          slMovementReasons: patterns.disciplineIssues.slMovementReasons.slice(0, 3)
-        },
-        riskManagementIssues: {
-          missingStopLoss: patterns.tradesWithoutStopLoss,
-          missingTakeProfit: patterns.tradesWithoutTakeProfit
-        }
+      patterns: {
+        lossEmotions: getMostCommon(patterns.emotionInLosses).slice(0, 3),
+        winEmotions: getMostCommon(patterns.emotionInWins).slice(0, 3),
+        lossTags: getMostCommon(patterns.tagsInLosses).slice(0, 3),
+        winTags: getMostCommon(patterns.tagsInWins).slice(0, 3),
+        mistakes: patterns.commonMistakes.slice(0, 3)
       },
-      strengths: {
-        successfulEmotions: getMostCommon(patterns.emotionInWins),
-        successfulTags: getMostCommon(patterns.tagsInWins)
-      },
-      worstTrades: patterns.worstTrades,
-      aiInsights: patterns.aiRecommendations.slice(0, 5)
+      highlights: {
+        worstTrade: patterns.worstTrade,
+        bestTrade: patterns.bestTrade
+      }
     };
 
     // Generate quiz using Gemini
@@ -216,7 +161,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 }`;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
       {
         contents: [{
           parts: [{
@@ -232,24 +177,31 @@ Return ONLY valid JSON (no markdown, no code blocks):
       },
       {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        timeout: 60000
       }
     );
 
     const aiResponse = response.data.candidates[0].content.parts[0].text;
     
-    // Parse JSON response (remove markdown code blocks if present)
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    const quizData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(aiResponse);
+    // Parse JSON response (handle minor LLM formatting issues)
+    const quizData = JSON.parse(sanitizeJSON(aiResponse));
+    const answerMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
 
     return {
-      ...quizData,
-      generatedAt: new Date().toISOString(),
-      basedOnTrades: patterns.emotionInLosses.length + patterns.emotionInWins.length,
-      userContext: {
-        winRate: patterns.winRate.toFixed(2),
-        primaryWeakness: getMostCommon(patterns.emotionInLosses)[0] || 'Unknown'
-      }
+      quiz: {
+        questions: (quizData.quiz || []).map(q => ({
+          id: q.id,
+          question: q.question,
+          options: q.options || [],
+          correctAnswer: answerMap[q.correctAnswer] ?? q.correctAnswer,
+          explanation: q.explanation || '',
+          relatedPattern: q.category || '',
+          difficulty: q.difficulty
+        })),
+        difficulty,
+        generatedAt: new Date().toISOString()
+      },
+      summary: quizData.summary || {}
     };
 
   } catch (error) {
@@ -280,28 +232,25 @@ async function generatePersonalizedFlashcards(userId, options = {}) {
 
     // Build context for Gemini
     const flashcardContext = {
-      userStats: {
-        totalTrades: patterns.emotionInLosses.length + patterns.emotionInWins.length,
-        winRate: patterns.winRate.toFixed(2)
+      trades: patterns.compactTrades,
+      stats: {
+        winRate: patterns.winRate.toFixed(2),
+        avgPL: patterns.avgProfitLoss.toFixed(2),
+        missingSL: patterns.tradesWithoutStopLoss,
+        missingTP: patterns.tradesWithoutTakeProfit,
+        slMoved: patterns.disciplineIssues.movedSLDown,
+        earlyExits: patterns.disciplineIssues.earlyExits
       },
-      keyLearningAreas: {
-        emotionalPatterns: {
-          lossEmotions: getMostCommon(patterns.emotionInLosses),
-          winEmotions: getMostCommon(patterns.emotionInWins)
-        },
-        commonMistakes: patterns.commonMistakes.slice(0, 10),
-        lessonsLearned: patterns.lessonsLearned.slice(0, 10),
-        aiRecommendations: patterns.aiRecommendations.slice(0, 10),
-        problematicStrategies: getMostCommon(patterns.tagsInLosses),
-        successfulStrategies: getMostCommon(patterns.tagsInWins),
-        riskManagementGaps: {
-          missingStopLoss: patterns.tradesWithoutStopLoss,
-          missingTakeProfit: patterns.tradesWithoutTakeProfit
-        }
+      patterns: {
+        lossEmotions: getMostCommon(patterns.emotionInLosses),
+        winEmotions: getMostCommon(patterns.emotionInWins),
+        lossTags: getMostCommon(patterns.tagsInLosses),
+        winTags: getMostCommon(patterns.tagsInWins),
+        mistakes: patterns.commonMistakes.slice(0, 5)
       },
-      specificExamples: {
-        worstTrades: patterns.worstTrades,
-        bestTrades: patterns.bestTrades
+      highlights: {
+        worstTrade: patterns.worstTrade,
+        bestTrade: patterns.bestTrade
       }
     };
 
@@ -367,7 +316,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 }`;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
       {
         contents: [{
           parts: [{
@@ -383,31 +332,44 @@ Return ONLY valid JSON (no markdown, no code blocks):
       },
       {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
+        timeout: 60000
       }
     );
 
     const aiResponse = response.data.candidates[0].content.parts[0].text;
     
-    // Parse JSON response
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    const flashcardData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(aiResponse);
+    // Parse JSON response (handle minor LLM formatting issues)
+    const flashcardData = JSON.parse(sanitizeJSON(aiResponse));
+    const cards = flashcardData.flashcards || [];
+    const categories = [...new Set(cards.map(c => c.category).filter(Boolean))];
 
     return {
-      ...flashcardData,
-      generatedAt: new Date().toISOString(),
-      basedOnTrades: patterns.emotionInLosses.length + patterns.emotionInWins.length,
-      userContext: {
-        winRate: patterns.winRate.toFixed(2),
-        primaryWeakness: getMostCommon(patterns.emotionInLosses)[0] || 'Unknown',
-        topMistake: patterns.commonMistakes[0] || 'Not enough data'
-      }
+      flashcards: cards.map(c => ({
+        id: c.id,
+        front: c.front,
+        back: c.back,
+        category: c.category || 'general',
+        difficulty: c.priority || 'medium'
+      })),
+      categories,
+      generatedAt: new Date().toISOString()
     };
 
   } catch (error) {
     console.error('Error generating personalized flashcards:', error);
     throw new Error('Failed to generate personalized flashcards');
   }
+}
+
+/**
+ * Clean malformed JSON from LLM responses
+ */
+function sanitizeJSON(text) {
+  let json = text.replace(/^```(?:json)?\s*|\s*```$/g, '');
+  const braceMatch = json.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (braceMatch) json = braceMatch[0];
+  json = json.replace(/,\s*([}\]])/g, '$1');
+  return json;
 }
 
 /**

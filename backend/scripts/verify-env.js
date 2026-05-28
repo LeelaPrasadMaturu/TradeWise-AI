@@ -144,7 +144,7 @@ async function testGeminiAPI() {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
       {
         contents: [{
           parts: [{ text: 'Say "API working" in exactly 2 words.' }]
@@ -243,7 +243,7 @@ async function testCohereAPI() {
     const response = await axios.post(
       'https://api.cohere.com/v2/chat',
       {
-        model: 'command-r',  // Using stable model
+        model: 'command-a-03-2025',
         messages: [
           {
             role: 'user',
@@ -278,7 +278,7 @@ async function testCohereAPI() {
         const v1Response = await axios.post(
           'https://api.cohere.ai/v1/generate',
           {
-            model: 'command',
+            model: 'command-a-03-2025',
             prompt: 'Define "stop loss" in trading in one sentence.',
             max_tokens: 50
           },

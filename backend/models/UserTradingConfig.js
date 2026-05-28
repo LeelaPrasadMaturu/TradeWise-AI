@@ -149,7 +149,7 @@ const userTradingConfigSchema = new mongoose.Schema({
 });
 
 // Index
-userTradingConfigSchema.index({ user: 1 });
+
 
 // Static method to get or create config for user
 userTradingConfigSchema.statics.getOrCreate = async function(userId) {

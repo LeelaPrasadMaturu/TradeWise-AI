@@ -442,7 +442,7 @@ async function generateAIFocusAreas(userId, yesterdaySummary, baseline) {
   }
   
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
     
     const prompt = `You are a trading coach. Based on this trader's data, provide 2-3 SHORT focus areas for today (max 15 words each).
 

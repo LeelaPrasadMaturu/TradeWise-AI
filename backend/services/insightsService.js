@@ -254,7 +254,7 @@ Structure your analysis in the following sections with clear markdown formatting
 Generate the analysis now.`;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
       {
         contents: [
           {
@@ -270,7 +270,7 @@ Generate the analysis now.`;
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 second timeout for larger payloads
+        timeout: 60000 // 60 second timeout for larger payloads
       }
     );
 

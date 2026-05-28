@@ -1,4 +1,5 @@
 const { InferenceClient } = require('@huggingface/inference');
+const axios = require('axios');
 const constants = require('../config/constants');
 
 // Map of FinBERT sentiments to schema-valid values
@@ -118,9 +119,15 @@ async function analyzeEmotion(text) {
           'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 5000 // 5 second timeout
+        timeout: 30000
       }
     );
+
+    // Check if model is still loading (free tier loads on-demand)
+    if (response.data?.error?.includes('loading')) {
+      console.warn('FinBERT model is loading, using keyword fallback');
+      return detectEmotionFromKeywords(text);
+    }
 
     // FinBERT returns an array of sentiment scores
     const result = response.data;
@@ -158,14 +165,16 @@ async function analyzeEmotion(text) {
       emotionType: isFOMO ? 'fomo' : sentimentToEmotionType[detectedSentiment]
     };
   } catch (error) {
-    console.error('Error in emotion detection:', error.message);
-    
-    // If it's a permission error, log it specifically
-    if (error.response?.status === 403) {
-      console.error('Hugging Face API permission error. Please check your API key permissions.');
+    if (error.response?.status === 503 || error.response?.data?.error?.includes('loading')) {
+      console.warn('FinBERT model is loading on HuggingFace free tier, using keyword fallback');
+    } else if (error.response?.status === 403) {
+      console.error('Hugging Face API permission error. Check your API key.');
+    } else if (error.code === 'ENOTFOUND' || error.code === 'EAI_AGAIN') {
+      console.warn('Cannot reach HuggingFace (network/DNS issue), using keyword fallback');
+    } else {
+      console.error('Error in emotion detection:', error.message);
     }
     
-    // Fallback to keyword-based detection
     return detectEmotionFromKeywords(text);
   }
 }

@@ -1,4 +1,5 @@
 const { CohereClientV2 } = require('cohere-ai');
+const constants = require('../config/constants');
 
 const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY
@@ -71,7 +72,7 @@ Example: With 10x leverage, investing ₹10,000 allows control over ₹1,00,000 
 
 
     const response = await cohere.chat({
-      model: "command-r",  // Using stable command-r model
+      model: constants.AI_SERVICES.COHERE.MODEL,
       messages: [
         {
           role: "user",

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "@huggingface/inference": "^4.13.18",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "cohere-ai": "^7.5.0",

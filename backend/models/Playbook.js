@@ -151,13 +151,15 @@ const playbookSchema = new mongoose.Schema({
 });
 
 // Indexes
-playbookSchema.index({ user: 1 });
+
 
 // Static method to get or create playbook
 playbookSchema.statics.getOrCreate = async function(userId) {
   let playbook = await this.findOne({ user: userId });
-  if (!playbook) {
-    playbook = new this({
+  if (playbook) return playbook;
+
+  try {
+    playbook = await this.create({
       user: userId,
       setups: [
         {
@@ -208,9 +210,13 @@ playbookSchema.statics.getOrCreate = async function(userId) {
         }
       ]
     });
-    await playbook.save();
+    return playbook;
+  } catch (err) {
+    if (err.code === 11000) {
+      return await this.findOne({ user: userId });
+    }
+    throw err;
   }
-  return playbook;
 };
 
 // Method to find matching setup for a trade

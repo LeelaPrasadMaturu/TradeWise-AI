@@ -187,7 +187,6 @@ const userBaselineSchema = new mongoose.Schema({
 });
 
 // Index for quick lookup
-userBaselineSchema.index({ user: 1 });
 userBaselineSchema.index({ calculatedAt: -1 });
 
 // Static method to get or create baseline for user
