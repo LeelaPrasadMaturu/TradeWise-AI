@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Download, FileText, TrendingUp, TrendingDown, Calculator, AlertTriangle } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Download, FileText, TrendingUp, TrendingDown, Calculator, AlertTriangle, Sparkles, Loader2, Calendar, Brain, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -125,6 +127,20 @@ function TradesTable({ trades, showGainType = false }: { trades: TradeSummary[];
 
 export default function ReportsPage() {
   const [selectedFY, setSelectedFY] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('tax');
+  
+  // Weekly Insights date range state
+  const getDefaultDateRange = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    };
+  };
+  
+  const [insightsDateRange, setInsightsDateRange] = useState(getDefaultDateRange);
 
   const { data: fyData } = useQuery({
     queryKey: ['available-fys'],
@@ -144,6 +160,15 @@ export default function ReportsPage() {
     queryFn: () => api.getFnOTurnover(currentFY),
     enabled: !!currentFY,
   });
+
+  // Weekly Insights mutation for on-demand generation
+  const insightsMutation = useMutation({
+    mutationFn: () => api.getWeeklyInsights(insightsDateRange.start, insightsDateRange.end),
+  });
+
+  const handleGenerateInsights = () => {
+    insightsMutation.mutate();
+  };
 
   const handleExportCSV = async () => {
     try {
@@ -181,30 +206,229 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Tax Reports</h1>
+          <h1 className="text-2xl font-semibold">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            ITR-ready reports for capital gains and F&O turnover
+            Tax reports and AI-powered trading insights
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={selectedFY || fyData?.current} onValueChange={(val) => val && setSelectedFY(val)}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Select FY" />
-            </SelectTrigger>
-            <SelectContent>
-              {fyData?.years.map((fy) => (
-                <SelectItem key={fy} value={fy}>
-                  FY {fy}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
       </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="tax">
+            <Calculator className="h-4 w-4 mr-2" />
+            Tax Reports
+          </TabsTrigger>
+          <TabsTrigger value="insights">
+            <Brain className="h-4 w-4 mr-2" />
+            Weekly Insights
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="insights" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI-Powered Weekly Insights
+              </CardTitle>
+              <CardDescription>
+                Generate comprehensive trading analysis with AI insights for any date range
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={insightsDateRange.start}
+                    onChange={(e) => setInsightsDateRange(prev => ({ ...prev, start: e.target.value }))}
+                    className="w-40"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate">End Date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={insightsDateRange.end}
+                    onChange={(e) => setInsightsDateRange(prev => ({ ...prev, end: e.target.value }))}
+                    className="w-40"
+                  />
+                </div>
+                <Button 
+                  onClick={handleGenerateInsights}
+                  disabled={insightsMutation.isPending}
+                  className="gap-2"
+                >
+                  {insightsMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generate Insights
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {insightsMutation.isError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    {(insightsMutation.error as Error)?.message || 'Failed to generate insights'}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          {insightsMutation.data && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  title="Total Trades"
+                  value={String(insightsMutation.data.statistics.totalTrades)}
+                  subtitle={`${insightsMutation.data.statistics.winningTrades}W / ${insightsMutation.data.statistics.losingTrades}L`}
+                  icon={BarChart3}
+                />
+                <StatCard
+                  title="Win Rate"
+                  value={`${insightsMutation.data.statistics.winRate.toFixed(1)}%`}
+                  subtitle={`${insightsMutation.data.statistics.winningTrades} winning trades`}
+                  icon={TrendingUp}
+                  variant={insightsMutation.data.statistics.winRate >= 50 ? 'profit' : 'loss'}
+                />
+                <StatCard
+                  title="Total P&L"
+                  value={formatCurrency(insightsMutation.data.statistics.totalProfitLoss)}
+                  subtitle={`Avg: ${formatCurrency(insightsMutation.data.statistics.avgProfitLoss)}`}
+                  icon={insightsMutation.data.statistics.totalProfitLoss >= 0 ? TrendingUp : TrendingDown}
+                  variant={insightsMutation.data.statistics.totalProfitLoss >= 0 ? 'profit' : 'loss'}
+                />
+                <StatCard
+                  title="Best / Worst"
+                  value={formatCurrency(insightsMutation.data.statistics.bestTrade)}
+                  subtitle={`Worst: ${formatCurrency(insightsMutation.data.statistics.worstTrade)}`}
+                  icon={FileText}
+                />
+              </div>
+
+              {insightsMutation.data.behavioralAnalysis && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Brain className="h-5 w-5" />
+                      Behavioral Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      Score: {insightsMutation.data.behavioralAnalysis.behavioralScore}/100 | 
+                      Style: {insightsMutation.data.behavioralAnalysis.tradingStyle}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {insightsMutation.data.behavioralAnalysis.patternsDetected.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2 text-sm text-muted-foreground">Patterns Detected</h4>
+                          <div className="space-y-2">
+                            {insightsMutation.data.behavioralAnalysis.patternsDetected.slice(0, 5).map((pattern, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <Badge variant={pattern.severity === 'high' ? 'destructive' : pattern.severity === 'medium' ? 'secondary' : 'outline'}>
+                                  {pattern.type.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {insightsMutation.data.behavioralAnalysis.positivePatterns.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2 text-sm text-muted-foreground">Positive Patterns</h4>
+                          <div className="space-y-2">
+                            {insightsMutation.data.behavioralAnalysis.positivePatterns.map((pattern, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <Badge variant="default" className="bg-green-600">
+                                  {pattern.type.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    AI Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Generated on {new Date(insightsMutation.data.generatedAt).toLocaleString()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div 
+                      className="whitespace-pre-wrap text-sm leading-relaxed"
+                      dangerouslySetInnerHTML={{ 
+                        __html: insightsMutation.data.aiInsights
+                          .replace(/## /g, '<h3 class="text-lg font-semibold mt-6 mb-2">')
+                          .replace(/### /g, '<h4 class="text-base font-medium mt-4 mb-2">')
+                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/- /g, '<span class="block ml-4">• </span>')
+                          .replace(/\n/g, '<br />')
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+          
+          {!insightsMutation.data && !insightsMutation.isPending && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg mb-2">Generate Your Weekly Insights</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  Select a date range and click &quot;Generate Insights&quot; to get AI-powered analysis 
+                  of your trading performance, behavioral patterns, and personalized recommendations.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="tax" className="space-y-6">
+          <div className="flex items-center gap-2 justify-end">
+            <Select value={selectedFY || fyData?.current} onValueChange={(val) => val && setSelectedFY(val)}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Select FY" />
+              </SelectTrigger>
+              <SelectContent>
+                {fyData?.years.map((fy) => (
+                  <SelectItem key={fy} value={fy}>
+                    FY {fy}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
 
       {error && (
         <Alert variant="destructive">
@@ -517,6 +741,8 @@ export default function ReportsPage() {
           </Tabs>
         </>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -24,6 +24,9 @@ import type {
   SetupRules,
   SetupChecklist,
   SetupComparison,
+  IndisciplineAnalysis,
+  StopLossAnalysis,
+  EarlyExitAnalysis,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -207,6 +210,25 @@ class ApiClient {
     return response.violations || [];
   }
 
+  // Indiscipline Insights
+  async getIndisciplineAnalysis(days?: number): Promise<IndisciplineAnalysis> {
+    const endpoint = days ? `/discipline/indiscipline?days=${days}` : '/discipline/indiscipline';
+    const response = await this.request<{ success: boolean } & IndisciplineAnalysis>(endpoint);
+    return response;
+  }
+
+  async getStopLossAnalysis(days?: number): Promise<StopLossAnalysis> {
+    const endpoint = days ? `/discipline/stop-loss-analysis?days=${days}` : '/discipline/stop-loss-analysis';
+    const response = await this.request<{ success: boolean } & StopLossAnalysis>(endpoint);
+    return response;
+  }
+
+  async getEarlyExitAnalysis(days?: number): Promise<EarlyExitAnalysis> {
+    const endpoint = days ? `/discipline/early-exit-analysis?days=${days}` : '/discipline/early-exit-analysis';
+    const response = await this.request<{ success: boolean } & EarlyExitAnalysis>(endpoint);
+    return response;
+  }
+
   // Rules
   async getRules(): Promise<TradingRule[]> {
     const response = await this.request<{ success: boolean; count: number; rules: TradingRule[] }>('/rules');
@@ -281,6 +303,15 @@ class ApiClient {
   // Coach
   async getBriefing(): Promise<PreMarketBriefing> {
     return this.request<PreMarketBriefing>('/coach/briefing');
+  }
+
+  async sendBriefingEmail(): Promise<{
+    success: boolean;
+    message: string;
+    briefing: PreMarketBriefing;
+    deliveryResult: { success: boolean; method: string; error?: string };
+  }> {
+    return this.request('/coach/briefing/send', { method: 'POST' });
   }
 
   async getAlerts(): Promise<{ alerts: CoachingAlert[] }> {
@@ -546,18 +577,42 @@ class ApiClient {
 
   // Weekly Insights
   async getWeeklyInsights(startDate?: string, endDate?: string): Promise<{
-    success: boolean;
-    period: { start: string; end: string };
-    metrics: {
+    period: { startDate: string; endDate: string };
+    statistics: {
       totalTrades: number;
+      winningTrades: number;
+      losingTrades: number;
+      breakevenTrades: number;
+      openTrades: number;
+      totalProfitLoss: number;
+      avgProfitLoss: number;
+      bestTrade: number;
+      worstTrade: number;
       winRate: number;
-      totalPnL: number;
-      avgWin: number;
-      avgLoss: number;
-      profitFactor: number;
     };
-    insights: string[];
-    recommendations: string[];
+    emotionAnalysis: Record<string, number>;
+    tagAnalysis: Record<string, number>;
+    behavioralAnalysis?: {
+      behavioralScore: number;
+      tradingStyle: string;
+      styleConfidence: number;
+      patternsDetected: Array<{
+        type: string;
+        severity: string;
+        message?: string;
+        insight?: string;
+      }>;
+      positivePatterns: Array<{ type: string; message: string }>;
+      recommendations: Array<{
+        priority: string;
+        category: string;
+        recommendation: string;
+        basedOn: string;
+      }>;
+    };
+    tradesAnalyzed: number;
+    aiInsights: string;
+    generatedAt: string;
   }> {
     const searchParams = new URLSearchParams();
     if (startDate) searchParams.append('startDate', startDate);

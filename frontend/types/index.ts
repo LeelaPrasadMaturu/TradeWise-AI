@@ -18,6 +18,26 @@ export interface PostTradeReview {
   lesson?: string;
 }
 
+export interface EarlyExitData {
+  exitedBeforeTarget?: boolean;
+  exitedInProfit?: boolean;
+  targetWasReachable?: boolean;
+  percentToTarget?: number;
+  exitReason?: 'fear' | 'impatience' | 'news' | 'time_constraint' | 'changed_view' | 'partial_profit' | 'other';
+  priceAfterExit?: number;
+  maxPriceAfterExit?: number;
+  targetHitAfterExit?: boolean;
+  missedProfitAmount?: number;
+}
+
+export interface StopLossMovement {
+  fromPrice: number;
+  toPrice: number;
+  movedAt: string;
+  direction: 'tightened' | 'widened' | 'breakeven';
+  reason?: string;
+}
+
 export interface Trade {
   _id: string;
   user: string;
@@ -29,6 +49,14 @@ export interface Trade {
   exitPrice?: number;
   stopLoss?: number;
   takeProfit?: number;
+  // Stop-loss movement tracking
+  originalStopLoss?: number;
+  movedStopLoss?: boolean;
+  movedStopLossDown?: boolean;
+  stopLossMovementReason?: string;
+  stopLossMovements?: StopLossMovement[];
+  // Early exit tracking
+  earlyExit?: EarlyExitData;
   positionValue?: number;
   tradeDate: string;
   entryTime?: string;
@@ -571,4 +599,146 @@ export interface SetupComparison {
     worstSetup: { name: string; winRate: number } | null;
   };
   recommendation: string;
+}
+
+// Weekly Insights Types
+export interface WeeklyInsightsStats {
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  breakevenTrades: number;
+  openTrades: number;
+  totalProfitLoss: number;
+  avgProfitLoss: number;
+  bestTrade: number;
+  worstTrade: number;
+  winRate: number;
+}
+
+export interface WeeklyInsights {
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  statistics: WeeklyInsightsStats;
+  emotionAnalysis: Record<string, number>;
+  tagAnalysis: Record<string, number>;
+  behavioralAnalysis?: {
+    behavioralScore: number;
+    tradingStyle: string;
+    styleConfidence: number;
+    patternsDetected: BehavioralPattern[];
+    positivePatterns: Array<{ type: string; message: string }>;
+    recommendations: Array<{
+      priority: string;
+      category: string;
+      recommendation: string;
+      basedOn: string;
+    }>;
+    baseline?: BehavioralAnalysis['baseline'];
+  };
+  tradesAnalyzed: number;
+  aiInsights: string;
+  generatedAt: string;
+}
+
+// Indiscipline Analysis Types
+export interface StopLossAnalysis {
+  periodDays: number;
+  summary: {
+    totalTrades: number;
+    tradesWithStopLoss: number;
+    stopLossUsageRate: number;
+    tradesMovedStopLoss: number;
+    tradesMovedStopLossDown: number;
+    percentMovedDown: number;
+  };
+  impact: {
+    lossesFromMovedSL: number;
+    totalExtraLoss: number;
+    averageExtraLoss: number;
+    potentialSavings: number;
+  };
+  winRateComparison: {
+    normalWinRate: number;
+    movedSLDownWinRate: number;
+    difference: number;
+    insight: string;
+  };
+  commonReasons: Array<{ reason: string; count: number }>;
+  recentExamples: Array<{
+    tradeId: string;
+    symbol: string;
+    date: string;
+    result: string;
+    profitLoss: number;
+    extraRisk: number;
+    reason: string;
+    originalSL: number;
+    finalSL: number;
+    exitPrice: number;
+  }>;
+  recommendations: Array<{
+    priority: string;
+    type: string;
+    message: string;
+    action: string;
+  }>;
+}
+
+export interface EarlyExitAnalysis {
+  periodDays: number;
+  summary: {
+    totalTradesWithTarget: number;
+    earlyExitCount: number;
+    profitableEarlyExits: number;
+    earlyExitRate: number;
+    avgPercentToTarget: number;
+  };
+  impact: {
+    totalMissedProfit: number;
+    avgMissedPerTrade: number;
+    potentialExtraProfit: number;
+  };
+  profitComparison: {
+    fullTargetAvgProfit: number;
+    earlyExitAvgProfit: number;
+    difference: number;
+    insight: string;
+  };
+  exitReasons: Array<{ reason: string; count: number; label: string }>;
+  recentExamples: Array<{
+    tradeId: string;
+    symbol: string;
+    date: string;
+    actualProfit: number;
+    potentialProfit: number;
+    missedProfit: number;
+    percentAchieved: number;
+    exitReason: string;
+    targetHitAfterExit: boolean;
+  }>;
+  recommendations: Array<{
+    priority: string;
+    type: string;
+    message: string;
+    action: string;
+  }>;
+}
+
+export interface IndisciplineAnalysis {
+  periodDays: number;
+  stopLossMovements: StopLossAnalysis;
+  earlyExits: EarlyExitAnalysis;
+  combinedImpact: {
+    totalIndisciplineCost: number;
+    breakdownText: string;
+    primaryIssue: string;
+  };
+  topRecommendations: Array<{
+    priority: string;
+    type: string;
+    message: string;
+    action: string;
+  }>;
 }

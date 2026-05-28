@@ -35,6 +35,7 @@ const tradeSchema = z.object({
   quantity: z.number().positive('Quantity must be positive'),
   stopLoss: z.number().positive().optional().or(z.literal('')),
   takeProfit: z.number().positive().optional().or(z.literal('')),
+  originalStopLoss: z.number().positive().optional().or(z.literal('')),
   tradeDate: z.string().min(1, 'Date is required'),
   reason: z.string().optional(),
   exitReason: z.string().optional(),
@@ -42,9 +43,25 @@ const tradeSchema = z.object({
   notes: z.string().optional(),
   result: z.enum(['win', 'loss', 'breakeven', 'open']).optional(),
   profitLoss: z.number().optional(),
+  // Discipline tracking
+  movedStopLoss: z.boolean().optional(),
+  movedStopLossDown: z.boolean().optional(),
+  stopLossMovementReason: z.string().optional(),
+  exitedBeforeTarget: z.boolean().optional(),
+  earlyExitReason: z.enum(['fear', 'impatience', 'news', 'time_constraint', 'changed_view', 'partial_profit', 'other']).optional(),
 });
 
 type TradeFormData = z.infer<typeof tradeSchema>;
+
+const earlyExitReasons = [
+  { value: 'fear', label: 'Fear of losing profit' },
+  { value: 'impatience', label: 'Impatience / Wanted quick exit' },
+  { value: 'news', label: 'News / External event' },
+  { value: 'time_constraint', label: 'Time constraint (EOD, etc.)' },
+  { value: 'changed_view', label: 'Changed my view on trade' },
+  { value: 'partial_profit', label: 'Wanted to book partial profit' },
+  { value: 'other', label: 'Other reason' },
+];
 
 const emotions = [
   { value: 'calm', label: 'Calm' },
@@ -71,6 +88,7 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
   const [checklistResponses, setChecklistResponses] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [showDisciplineSection, setShowDisciplineSection] = useState(!!editTrade?.exitPrice);
 
   const { data: config } = useQuery({
     queryKey: ['trading-config'],
@@ -93,6 +111,7 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
       quantity: editTrade.quantity,
       stopLoss: editTrade.stopLoss || '',
       takeProfit: editTrade.takeProfit || '',
+      originalStopLoss: editTrade.originalStopLoss || editTrade.stopLoss || '',
       tradeDate: editTrade.tradeDate?.split('T')[0] || new Date().toISOString().split('T')[0],
       reason: editTrade.reason || '',
       exitReason: editTrade.exitReason || '',
@@ -100,10 +119,18 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
       notes: editTrade.notes || '',
       result: editTrade.result || 'open',
       profitLoss: editTrade.profitLoss,
+      movedStopLoss: editTrade.movedStopLoss || false,
+      movedStopLossDown: editTrade.movedStopLossDown || false,
+      stopLossMovementReason: editTrade.stopLossMovementReason || '',
+      exitedBeforeTarget: editTrade.earlyExit?.exitedBeforeTarget || false,
+      earlyExitReason: editTrade.earlyExit?.exitReason,
     } : {
       direction: 'long',
       tradeDate: new Date().toISOString().split('T')[0],
       result: 'open',
+      movedStopLoss: false,
+      movedStopLossDown: false,
+      exitedBeforeTarget: false,
     },
   });
 
@@ -146,6 +173,7 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
       quantity: data.quantity,
       stopLoss: data.stopLoss || undefined,
       takeProfit: data.takeProfit || undefined,
+      originalStopLoss: data.originalStopLoss || data.stopLoss || undefined,
       tradeDate: data.tradeDate,
       reason: data.reason || undefined,
       exitReason: data.exitReason || undefined,
@@ -154,7 +182,19 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
       tags,
       result: data.result || 'open',
       profitLoss: data.profitLoss,
+      // Discipline tracking
+      movedStopLoss: data.movedStopLoss || false,
+      movedStopLossDown: data.movedStopLossDown || false,
+      stopLossMovementReason: data.stopLossMovementReason || undefined,
     };
+
+    // Add early exit data if applicable
+    if (data.exitedBeforeTarget) {
+      (tradeData as Record<string, unknown>).earlyExit = {
+        exitedBeforeTarget: true,
+        exitReason: data.earlyExitReason || undefined,
+      };
+    }
 
     // Calculate P&L if exit price is provided
     if (data.exitPrice && !data.profitLoss) {
@@ -385,6 +425,133 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
           </div>
         </CardContent>
       </Card>
+
+      {/* Discipline Tracking - Show when trade has exit price (closed trade) */}
+      {(watchExitPrice || editTrade?.exitPrice) && (
+        <Card className="border-border/50 border-warning/30">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              Trade Discipline Review
+              <Badge variant="outline" className="text-xs font-normal">
+                Important for insights
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Stop Loss Movement */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Stop Loss Management</Label>
+              
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="movedStopLoss"
+                  checked={watch('movedStopLoss') || false}
+                  onCheckedChange={(checked) => {
+                    setValue('movedStopLoss', !!checked);
+                    if (!checked) {
+                      setValue('movedStopLossDown', false);
+                      setValue('stopLossMovementReason', '');
+                    }
+                  }}
+                />
+                <label htmlFor="movedStopLoss" className="text-sm">
+                  I moved my stop loss during this trade
+                </label>
+              </div>
+
+              {watch('movedStopLoss') && (
+                <div className="ml-6 space-y-3 animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="movedStopLossDown"
+                      checked={watch('movedStopLossDown') || false}
+                      onCheckedChange={(checked) => setValue('movedStopLossDown', !!checked)}
+                    />
+                    <label htmlFor="movedStopLossDown" className="text-sm text-warning">
+                      I moved SL away from entry (widened risk / moved down for longs)
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="originalStopLoss" className="text-xs">Original Stop Loss</Label>
+                      <Input
+                        id="originalStopLoss"
+                        type="number"
+                        step="0.01"
+                        placeholder="Original SL price"
+                        {...register('originalStopLoss', { 
+                          setValueAs: v => v === '' ? undefined : Number(v)
+                        })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="stopLossMovementReason" className="text-xs">Why did you move SL?</Label>
+                      <Input
+                        id="stopLossMovementReason"
+                        placeholder="e.g., hope it will recover, scared of loss"
+                        {...register('stopLossMovementReason')}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Early Exit */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Exit Timing</Label>
+              
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="exitedBeforeTarget"
+                  checked={watch('exitedBeforeTarget') || false}
+                  onCheckedChange={(checked) => {
+                    setValue('exitedBeforeTarget', !!checked);
+                    if (!checked) {
+                      setValue('earlyExitReason', undefined);
+                    }
+                  }}
+                />
+                <label htmlFor="exitedBeforeTarget" className="text-sm">
+                  I exited before my target was hit (even though in profit)
+                </label>
+              </div>
+
+              {watch('exitedBeforeTarget') && (
+                <div className="ml-6 space-y-2 animate-in fade-in">
+                  <Label htmlFor="earlyExitReason" className="text-xs">Why did you exit early?</Label>
+                  <Select
+                    value={watch('earlyExitReason') || ''}
+                    onValueChange={(value) => value && setValue('earlyExitReason', value as TradeFormData['earlyExitReason'])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {earlyExitReasons.map((reason) => (
+                        <SelectItem key={reason.value} value={reason.value}>
+                          {reason.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {(watch('movedStopLossDown') || watch('exitedBeforeTarget')) && (
+              <Alert className="border-warning/50 bg-warning/10">
+                <AlertDescription className="text-sm text-warning">
+                  Tracking these patterns helps identify discipline issues. Your insights will show how these behaviors affect your P&L.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-border/50">
         <CardHeader className="pb-4">
