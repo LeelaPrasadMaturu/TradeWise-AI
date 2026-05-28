@@ -26,10 +26,7 @@ router.get('/briefing', auth, async (req, res) => {
   try {
     const briefing = await generatePreMarketBriefing(req.user._id);
     
-    res.json({
-      success: true,
-      briefing
-    });
+    res.json(briefing);
   } catch (error) {
     console.error('Error generating briefing:', error);
     res.status(500).json({
@@ -91,16 +88,77 @@ router.get('/summary/yesterday', auth, async (req, res) => {
   try {
     const summary = await getYesterdaySummary(req.user._id);
     
-    res.json({
-      success: true,
-      summary
-    });
+    res.json(summary);
   } catch (error) {
     console.error('Error getting yesterday summary:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to get summary'
     });
+  }
+});
+
+/**
+ * GET /api/coach/briefing/debug
+ * Debug briefing timezone calculations
+ */
+router.get('/briefing/debug', auth, async (req, res) => {
+  try {
+    const Trade = require('../models/Trade');
+    const now = new Date();
+    const offset = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(now.getTime() + offset);
+    const yesterdayIST = new Date(nowIST);
+    yesterdayIST.setDate(yesterdayIST.getDate() - 1);
+    yesterdayIST.setHours(0, 0, 0, 0);
+    const todayIST = new Date(nowIST);
+    todayIST.setHours(0, 0, 0, 0);
+    const yesterdayUTC = new Date(yesterdayIST.getTime() - offset);
+    const todayUTC = new Date(todayIST.getTime() - offset);
+
+    const tradesInRange = await Trade.find({
+      user: req.user._id,
+      tradeDate: { $gte: yesterdayUTC, $lt: todayUTC }
+    }).sort({ tradeDate: -1 }).select('symbol tradeDate result profitLoss entryPrice quantity');
+
+    const allTrades = await Trade.find({ user: req.user._id })
+      .sort({ tradeDate: -1 })
+      .limit(10)
+      .select('symbol tradeDate result profitLoss');
+
+    res.json({
+      success: true,
+      debug: {
+        serverTimeUTC: now.toISOString(),
+        serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown',
+        nowIST: nowIST.toISOString(),
+        queryRange: {
+          yesterdayIST: yesterdayIST.toISOString(),
+          todayIST: todayIST.toISOString(),
+          yesterdayUTC: yesterdayUTC.toISOString(),
+          todayUTC: todayUTC.toISOString()
+        },
+        tradesInRange: tradesInRange.map(t => ({
+          symbol: t.symbol,
+          tradeDate: t.tradeDate?.toISOString(),
+          tradeDateLocal: t.tradeDate?.toString(),
+          result: t.result,
+          profitLoss: t.profitLoss
+        })),
+        tradesInRangeCount: tradesInRange.length,
+        last10Trades: allTrades.map(t => ({
+          symbol: t.symbol,
+          tradeDate: t.tradeDate?.toISOString(),
+          tradeDateLocal: t.tradeDate?.toString(),
+          result: t.result,
+          profitLoss: t.profitLoss
+        })),
+        yesterdaySummary: await getYesterdaySummary(req.user._id)
+      }
+    });
+  } catch (error) {
+    console.error('Error in briefing debug:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

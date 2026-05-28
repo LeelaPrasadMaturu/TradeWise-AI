@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import ReactMarkdown from 'react-markdown';
 import api from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { TaxReport, TradeSummary } from '@/types';
@@ -346,11 +347,11 @@ export default function ReportsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4 md:grid-cols-2">
-                      {insightsMutation.data.behavioralAnalysis.patternsDetected.length > 0 && (
+                      {insightsMutation.data.behavioralAnalysis.patternsDetected?.length > 0 && (
                         <div>
                           <h4 className="font-medium mb-2 text-sm text-muted-foreground">Patterns Detected</h4>
                           <div className="space-y-2">
-                            {insightsMutation.data.behavioralAnalysis.patternsDetected.slice(0, 5).map((pattern, i) => (
+                            {insightsMutation.data.behavioralAnalysis.patternsDetected?.slice(0, 5).map((pattern, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <Badge variant={pattern.severity === 'high' ? 'destructive' : pattern.severity === 'medium' ? 'secondary' : 'outline'}>
                                   {pattern.type.replace(/_/g, ' ')}
@@ -360,11 +361,11 @@ export default function ReportsPage() {
                           </div>
                         </div>
                       )}
-                      {insightsMutation.data.behavioralAnalysis.positivePatterns.length > 0 && (
+                      {insightsMutation.data.behavioralAnalysis.positivePatterns?.length > 0 && (
                         <div>
                           <h4 className="font-medium mb-2 text-sm text-muted-foreground">Positive Patterns</h4>
                           <div className="space-y-2">
-                            {insightsMutation.data.behavioralAnalysis.positivePatterns.map((pattern, i) => (
+                            {insightsMutation.data.behavioralAnalysis.positivePatterns?.map((pattern, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <Badge variant="default" className="bg-green-600">
                                   {pattern.type.replace(/_/g, ' ')}
@@ -386,22 +387,14 @@ export default function ReportsPage() {
                     AI Analysis
                   </CardTitle>
                   <CardDescription>
-                    Generated on {new Date(insightsMutation.data.generatedAt).toLocaleString()}
+                    Generated on {new Date(insightsMutation.data.generatedAt ?? '').toLocaleString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <div 
-                      className="whitespace-pre-wrap text-sm leading-relaxed"
-                      dangerouslySetInnerHTML={{ 
-                        __html: insightsMutation.data.aiInsights
-                          .replace(/## /g, '<h3 class="text-lg font-semibold mt-6 mb-2">')
-                          .replace(/### /g, '<h4 class="text-base font-medium mt-4 mb-2">')
-                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/- /g, '<span class="block ml-4">• </span>')
-                          .replace(/\n/g, '<br />')
-                      }}
-                    />
+                  <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+                    <div className="text-sm leading-relaxed markdown-content">
+                      <ReactMarkdown>{insightsMutation.data.aiInsights ?? ''}</ReactMarkdown>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

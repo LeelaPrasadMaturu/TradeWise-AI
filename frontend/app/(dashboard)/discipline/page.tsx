@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, FileText, RefreshCw } from 'lucide-react';
+import { Plus, FileText, RefreshCw, Settings } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +32,7 @@ import { TradingRule } from '@/types';
 import { formatDate } from '@/lib/utils';
 
 export default function DisciplinePage() {
+  const router = useRouter();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<TradingRule | null>(null);
   const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
@@ -123,6 +125,9 @@ export default function DisciplinePage() {
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${retroEvalMutation.isPending ? 'animate-spin' : ''}`} />
             {retroEvalMutation.isPending ? 'Evaluating...' : 'Apply to Existing Trades'}
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => router.push('/settings')} title="Checklist & Emotional Settings">
+            <Settings className="h-4 w-4" />
           </Button>
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />

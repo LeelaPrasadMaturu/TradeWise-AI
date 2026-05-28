@@ -112,7 +112,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'Text to explain is required' });
     }
 
-    const explanation = await explainTerm(text, context);
+    const explanation = await explainTerm(req.user._id, text, context);
     res.json(explanation);
   } catch (error) {
     res.status(500).json({ message: 'Error generating explanation', error: error.message });
@@ -163,7 +163,7 @@ router.get('/term', auth, async (req, res) => {
       return res.status(400).json({ message: 'Term is required' });
     }
 
-    const explanation = await explainTerm(term, level);
+    const explanation = await explainTerm(req.user._id, term, level);
     res.json(explanation);
   } catch (error) {
     res.status(500).json({ message: 'Error explaining term', error: error.message });

@@ -1,29 +1,29 @@
 trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion,notes
-2026-05-18,09:18:00,NSE,RELIANCE,buy,40,2860.00,260518001,T260518001,market opening red but reliance green,scared sold early,2830.00,2900.00,contrarian,anxious,not sure if this is right move
-2026-05-18,09:35:00,NSE,RELIANCE,sell,40,2875.00,260518002,T260518002,,exited because market falling,,,,fearful,could have held but scared
-2026-05-18,10:00:00,NSE,TCS,buy,30,4280.00,260518003,T260518003,tcs dip maybe good entry not sure,sl triggered,4260.00,4320.00,dip_buy,uncertain,should i have bought?
-2026-05-18,10:25:00,NSE,TCS,sell,30,4255.00,260518004,T260518004,,stopped out was it right entry,,,,anxious,always second guessing myself
-2026-05-18,10:30:00,NSE,TCS,buy,30,4260.00,260518005,T260518005,maybe i sold too early lets re enter,manual cut loss,4240.00,4300.00,re_entry,uncertain,confused now
-2026-05-18,11:00:00,NSE,TCS,sell,30,4248.00,260518006,T260518006,,cut loss manually afraid of more down,,,,fearful,should have stayed out
-2026-05-18,11:30:00,NSE,HDFCBANK,buy,35,1730.00,260518007,T260518007,hdfc usually safe lets try,holding with fear,1715.00,1760.00,safe_stock,anxious,need some stability
-2026-05-18,12:45:00,NSE,HDFCBANK,sell,35,1745.00,260518008,T260518008,,exited early target was 1760,,,,uncertain,why cant i hold winners
-2026-05-18,13:15:00,NSE,SBIN,buy,100,945.00,260518009,T260518009,sbi looks strong but market weak,panic exit,935.00,965.00,mixed_signals,anxious,confusing day
-2026-05-18,14:00:00,NSE,SBIN,sell,100,938.00,260518010,T260518010,,scared of holding overnight sold,,,,fearful,small loss better than big one
-2026-05-19,09:20:00,NSE,INFY,buy,50,1890.00,260519001,T260519001,gap up entry maybe good,exited on red candle,1875.00,1920.00,gap_play,anxious,yesterday was bad today also scared
-2026-05-19,09:45:00,NSE,INFY,sell,50,1895.00,260519002,T260519002,,one red candle made me exit,,,,fearful,could have been worse i guess
-2026-05-19,10:30:00,NSE,TATAMOTORS,buy,60,1185.00,260519003,T260519003,auto sector news good,sold too early,1170.00,1210.00,news,uncertain,news driven trade
-2026-05-19,11:15:00,NSE,TATAMOTORS,sell,60,1192.00,260519004,T260519004,,nervous about holding,,,,anxious,always cutting winners short
-2026-05-19,11:45:00,NSE,ICICIBANK,buy,40,1140.00,260519005,T260519005,icici support bounce,profit but small,1128.00,1165.00,support,nervous,trying to trade with plan
-2026-05-19,12:30:00,NSE,ICICIBANK,sell,40,1148.00,260519006,T260519006,,exited at first sign of weakness,,,,fearful,cant handle the stress
-2026-05-19,13:30:00,NSE,WIPRO,buy,70,610.00,260519007,T260519007,wipro cheap maybe oversold,sl hit bad day,602.00,625.00,oversold,tired,mentally exhausted from trading
-2026-05-19,14:30:00,NSE,WIPRO,sell,70,600.00,260519008,T260519008,,stopped out again,,,,frustrated,nothing working
-2026-05-20,09:25:00,NSE,BAJFINANCE,buy,10,7550.00,260520001,T260520001,baj finance quality stock,exited with small profit,7480.00,7680.00,quality,anxious,scared of big losses
-2026-05-20,10:45:00,NSE,BAJFINANCE,sell,10,7580.00,260520002,T260520002,,took profit early was going to target,,,,uncertain,why did i exit
-2026-05-20,11:15:00,NSE,RELIANCE,buy,35,2875.00,260520003,T260520003,reliance safe stock,holding nervous,2855.00,2910.00,safe,nervous,please work out this time
-2026-05-20,13:00:00,NSE,RELIANCE,sell,35,2890.00,260520004,T260520004,,half target done cant risk more,,,,anxious,atleast not a loss
-2026-05-20,13:45:00,NSE,NIFTY26MAY23100PE,buy,30,280.00,260520005,T260520005,market weak maybe puts will work,loss on puts,250.00,350.00,options,fearful,hedging my longs
-2026-05-20,15:00:00,NSE,NIFTY26MAY23100PE,sell,30,240.00,260520006,T260520006,,market recovered puts worthless,,,,frustrated,options timing always wrong
-2026-05-21,09:30:00,NSE,HDFCBANK,buy,30,1750.00,260521001,T260521001,simple trade just hdfc,target almost,1735.00,1780.00,simple,calm,keeping it simple today
-2026-05-21,11:45:00,NSE,HDFCBANK,sell,30,1775.00,260521002,T260521002,,near target good trade,,,,confident,finally a clean trade
-2026-05-21,12:30:00,NSE,TCS,buy,20,4310.00,260521003,T260521003,tcs steady stock,good exit,4290.00,4350.00,steady,neutral,copying yesterday style
-2026-05-21,14:00:00,NSE,TCS,sell,20,4345.00,260521004,T260521004,,full target hit,,,,confident,when i stay calm i trade better
+2026-05-20,09:18:00,NSE,RELIANCE,buy,40,2860.00,260520001,T260520001,market opening red but reliance green,scared sold early,2830.00,2900.00,contrarian,anxious,not sure if this is right move
+2026-05-20,09:35:00,NSE,RELIANCE,sell,40,2875.00,260520002,T260520002,,exited because market falling,,,,fearful,could have held but scared
+2026-05-20,10:00:00,NSE,TCS,buy,30,4280.00,260520003,T260520003,tcs dip maybe good entry not sure,sl triggered,4260.00,4320.00,dip_buy,uncertain,should i have bought?
+2026-05-20,10:25:00,NSE,TCS,sell,30,4255.00,260520004,T260520004,,stopped out was it right entry,,,,anxious,always second guessing myself
+2026-05-20,10:30:00,NSE,TCS,buy,30,4260.00,260520005,T260520005,maybe i sold too early lets re enter,manual cut loss,4240.00,4300.00,re_entry,uncertain,confused now
+2026-05-20,11:00:00,NSE,TCS,sell,30,4248.00,260520006,T260520006,,cut loss manually afraid of more down,,,,fearful,should have stayed out
+2026-05-20,11:30:00,NSE,HDFCBANK,buy,35,1730.00,260520007,T260520007,hdfc usually safe lets try,holding with fear,1715.00,1760.00,safe_stock,anxious,need some stability
+2026-05-20,12:45:00,NSE,HDFCBANK,sell,35,1745.00,260520008,T260520008,,exited early target was 1760,,,,uncertain,why cant i hold winners
+2026-05-20,13:15:00,NSE,SBIN,buy,100,945.00,260520009,T260520009,sbi looks strong but market weak,panic exit,935.00,965.00,mixed_signals,anxious,confusing day
+2026-05-20,14:00:00,NSE,SBIN,sell,100,938.00,260520010,T260520010,,scared of holding overnight sold,,,,fearful,small loss better than big one
+2026-05-21,09:20:00,NSE,INFY,buy,50,1890.00,260521001,T260521001,gap up entry maybe good,exited on red candle,1875.00,1920.00,gap_play,anxious,yesterday was bad today also scared
+2026-05-21,09:45:00,NSE,INFY,sell,50,1895.00,260521002,T260521002,,one red candle made me exit,,,,fearful,could have been worse i guess
+2026-05-21,10:30:00,NSE,TATAMOTORS,buy,60,1185.00,260521003,T260521003,auto sector news good,sold too early,1170.00,1210.00,news,uncertain,news driven trade
+2026-05-21,11:15:00,NSE,TATAMOTORS,sell,60,1192.00,260521004,T260521004,,nervous about holding,,,,anxious,always cutting winners short
+2026-05-21,11:45:00,NSE,ICICIBANK,buy,40,1140.00,260521005,T260521005,icici support bounce,profit but small,1128.00,1165.00,support,nervous,trying to trade with plan
+2026-05-21,12:30:00,NSE,ICICIBANK,sell,40,1148.00,260521006,T260521006,,exited at first sign of weakness,,,,fearful,cant handle the stress
+2026-05-21,13:30:00,NSE,WIPRO,buy,70,610.00,260521007,T260521007,wipro cheap maybe oversold,sl hit bad day,602.00,625.00,oversold,tired,mentally exhausted from trading
+2026-05-21,14:30:00,NSE,WIPRO,sell,70,600.00,260521008,T260521008,,stopped out again,,,,frustrated,nothing working
+2026-05-22,09:25:00,NSE,BAJFINANCE,buy,10,7550.00,260522001,T260522001,baj finance quality stock,exited with small profit,7480.00,7680.00,quality,anxious,scared of big losses
+2026-05-22,10:45:00,NSE,BAJFINANCE,sell,10,7580.00,260522002,T260522002,,took profit early was going to target,,,,uncertain,why did i exit
+2026-05-22,11:15:00,NSE,RELIANCE,buy,35,2875.00,260522003,T260522003,reliance safe stock,holding nervous,2855.00,2910.00,safe,nervous,please work out this time
+2026-05-22,13:00:00,NSE,RELIANCE,sell,35,2890.00,260522004,T260522004,,half target done cant risk more,,,,anxious,atleast not a loss
+2026-05-22,13:45:00,NSE,NIFTY26MAY23100PE,buy,30,280.00,260522005,T260522005,market weak maybe puts will work,loss on puts,250.00,350.00,options,fearful,hedging my longs
+2026-05-22,15:00:00,NSE,NIFTY26MAY23100PE,sell,30,240.00,260522006,T260522006,,market recovered puts worthless,,,,frustrated,options timing always wrong
+2026-05-28,09:30:00,NSE,HDFCBANK,buy,30,1750.00,260525001,T260525001,simple trade just hdfc,target almost,1735.00,1780.00,simple,calm,keeping it simple today
+2026-05-28,11:45:00,NSE,HDFCBANK,sell,30,1775.00,260525002,T260525002,,near target good trade,,,,confident,finally a clean trade
+2026-05-28,12:30:00,NSE,TCS,buy,20,4310.00,260525003,T260525003,tcs steady stock,good exit,4290.00,4350.00,steady,neutral,copying yesterday style
+2026-05-28,14:00:00,NSE,TCS,sell,20,4345.00,260525004,T260525004,,full target hit,,,,confident,when i stay calm i trade better

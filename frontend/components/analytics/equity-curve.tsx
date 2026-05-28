@@ -58,13 +58,13 @@ export function EquityCurve({ trades }: EquityCurveProps) {
         >
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tick={{ fontSize: 11, fill: '#ffffff' }}
             tickLine={false}
-            axisLine={{ stroke: 'hsl(var(--border))' }}
+            axisLine={{ stroke: '#ffffff' }}
             interval="preserveStartEnd"
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tick={{ fontSize: 11, fill: '#ffffff' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={(value) => 

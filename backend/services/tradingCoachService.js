@@ -8,6 +8,7 @@ const UserBaseline = require('../models/UserBaseline');
 const TradingRule = require('../models/TradingRule');
 const TradeRuleCheck = require('../models/TradeRuleCheck');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { calculateUserBaseline } = require('./behavioralPatternService');
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
 
@@ -29,15 +30,18 @@ const SEVERITY = {
 };
 
 /**
- * Get today's trading context for a user
+ * Get today's trading context for a user (IST-aware)
  */
 async function getTodayContext(userId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+  const offset = 5.5 * 60 * 60 * 1000;
+  const nowIST = new Date(new Date().getTime() + offset);
+  const todayStartIST = new Date(nowIST);
+  todayStartIST.setHours(0, 0, 0, 0);
+  const todayUTC = new Date(todayStartIST.getTime() - offset);
+
   const trades = await Trade.find({
     user: userId,
-    tradeDate: { $gte: today }
+    tradeDate: { $gte: todayUTC }
   }).sort({ entryTime: -1, tradeDate: -1 });
   
   const closedTrades = trades.filter(t => t.result && t.result !== 'open');
@@ -348,20 +352,48 @@ async function generateRealTimeAlerts(userId, trade = null) {
 }
 
 /**
- * Get yesterday's trading summary
+ * Get yesterday's trading summary (IST-aware)
  */
 async function getYesterdaySummary(userId) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+  const now = new Date();
+  const offset = 5.5 * 60 * 60 * 1000; // IST offset in ms
+
+  const nowIST = new Date(now.getTime() + offset);
+  const yesterdayIST = new Date(nowIST);
+  yesterdayIST.setDate(yesterdayIST.getDate() - 1);
+  yesterdayIST.setHours(0, 0, 0, 0);
+  const todayIST = new Date(nowIST);
+  todayIST.setHours(0, 0, 0, 0);
+
+  const yesterdayUTC = new Date(yesterdayIST.getTime() - offset);
+  const todayUTC = new Date(todayIST.getTime() - offset);
+
+  console.log(`[Briefing] User ${userId}:`);
+  console.log(`  Server time (UTC): ${now.toISOString()}`);
+  console.log(`  Current IST: ${nowIST.toISOString()}`);
+  console.log(`  Yesterday IST range: ${yesterdayIST.toISOString()} to ${todayIST.toISOString()}`);
+  console.log(`  Converting to UTC range: ${yesterdayUTC.toISOString()} to ${todayUTC.toISOString()}`);
+
   const trades = await Trade.find({
     user: userId,
-    tradeDate: { $gte: yesterday, $lt: today }
+    tradeDate: { $gte: yesterdayUTC, $lt: todayUTC }
   });
+
+  console.log(`  Trades found in UTC range: ${trades.length}`);
+  if (trades.length > 0) {
+    trades.forEach(t => {
+      console.log(`    - ${t.symbol} | date: ${t.tradeDate?.toISOString()} | result: ${t.result} | PnL: ${t.profitLoss}`);
+    });
+  } else {
+    const lastTrades = await Trade.find({ user: userId })
+      .sort({ tradeDate: -1 })
+      .limit(5)
+      .select('symbol tradeDate result profitLoss');
+    console.log(`  Last 5 trades in DB (any date):`);
+    lastTrades.forEach(t => {
+      console.log(`    - ${t.symbol} | date: ${t.tradeDate?.toISOString()} | result: ${t.result} | PnL: ${t.profitLoss}`);
+    });
+  }
   
   const closedTrades = trades.filter(t => t.result && t.result !== 'open');
   const wins = closedTrades.filter(t => t.result === 'win').length;
@@ -371,7 +403,7 @@ async function getYesterdaySummary(userId) {
   // Get rule violations from yesterday
   const ruleChecks = await TradeRuleCheck.find({
     user: userId,
-    checkedAt: { $gte: yesterday, $lt: today }
+    checkedAt: { $gte: yesterdayUTC, $lt: todayUTC }
   });
   
   const violations = [];
@@ -387,7 +419,7 @@ async function getYesterdaySummary(userId) {
     });
   });
   
-  return {
+  const summary = {
     tradeCount: trades.length,
     wins,
     losses,
@@ -396,6 +428,9 @@ async function getYesterdaySummary(userId) {
     violations,
     blockedTrades: ruleChecks.filter(c => !c.tradeAllowed).length
   };
+
+  console.log(`  Summary: ${summary.tradeCount} trades, ${summary.wins}W/${summary.losses}L, PnL: ${summary.pnl}`);
+  return summary;
 }
 
 /**
@@ -479,11 +514,18 @@ Return ONLY a JSON array of strings, like: ["Focus area 1", "Focus area 2"]`;
  */
 async function generatePreMarketBriefing(userId) {
   try {
-    const [yesterdaySummary, baseline, dayWarning] = await Promise.all([
+    const [yesterdaySummary, baselineRaw, dayWarning] = await Promise.all([
       getYesterdaySummary(userId),
       UserBaseline.findOne({ user: userId }),
       getDayOfWeekWarning(userId)
     ]);
+
+    // Recalculate baseline if stale (more than 1 hour old) or missing
+    let baseline = baselineRaw;
+    if (!baseline || baseline.needsRecalculation(1)) {
+      console.log('[Briefing] Baseline stale or missing — recalculating from trades...');
+      baseline = await calculateUserBaseline(userId, 90);
+    }
     
     // Get best hours (fix: use tradeCount instead of trades)
     const bestHours = baseline?.hourlyPerformance

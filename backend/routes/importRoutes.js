@@ -6,6 +6,7 @@ const auth = require('../middlewares/authMiddleware');
 const { importFromCSV, validateCSV, SUPPORTED_BROKERS } = require('../services/csvImportService');
 const { validateTrade, saveValidationResult } = require('../services/ruleValidationService');
 const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisService');
+const { analyzeEmotion } = require('../services/emotionDetectService');
 
 /**
  * @swagger
@@ -234,12 +235,32 @@ router.post('/csv', auth, async (req, res) => {
           result: trade.result || 'open',
           tradeDate: trade.tradeDate,
           exitDate: trade.exitDate || undefined,
-          notes: trade.notes || `Imported from ${parseResult.broker} CSV`,
-          tags: ['csv-import', parseResult.broker],
+          notes: trade.notes || '',
+          tags: trade.tags || [],
           source: 'csv_import'
         });
 
         await newTrade.save();
+        
+        // Run FinBERT emotion analysis on entry reason
+        if (trade.reason) {
+          try {
+            newTrade.emotionAnalysis = await analyzeEmotion(trade.reason);
+            await newTrade.save();
+          } catch (emotionError) {
+            console.error('Emotion analysis error for imported trade:', emotionError.message);
+          }
+        }
+        
+        // Run FinBERT emotion analysis on exit reason
+        if (trade.exitReason) {
+          try {
+            newTrade.exitEmotionAnalysis = await analyzeEmotion(trade.exitReason);
+            await newTrade.save();
+          } catch (emotionError) {
+            console.error('Exit emotion analysis error for imported trade:', emotionError.message);
+          }
+        }
         
         // Run rule validation (same as manual trade creation)
         if (hasRules) {

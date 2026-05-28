@@ -1,27 +1,27 @@
 trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion,notes
-2026-05-07,09:20:00,NSE,RELIANCE,buy,50,2850.00,260507001,T260507001,everyone saying reliance will go 3000 this week,sl hit bad entry,2820.00,2900.00,tip,fomo,twitter pe sab bol rahe the buy karo
-2026-05-07,09:45:00,NSE,RELIANCE,sell,50,2815.00,260507002,T260507002,,stopped out big loss,,,,anxious,entered at top
-2026-05-07,10:00:00,NSE,TATAMOTORS,buy,100,1180.00,260507003,T260507003,tata motors 5% up already missing rally,more loss,1160.00,1210.00,momentum_chase,fomo,already moved but maybe more upside
-2026-05-07,10:35:00,NSE,TATAMOTORS,sell,100,1155.00,260507004,T260507004,,cut loss reversal happening,,,,frustrated,chased the move
-2026-05-07,11:15:00,NSE,ADANIENT,buy,30,2600.00,260507005,T260507005,adani stocks flying dont want to miss,holding loss,2550.00,2700.00,momentum_chase,fomo,adani group is on fire everyone making money
-2026-05-07,12:30:00,NSE,ADANIENT,sell,30,2520.00,260507006,T260507006,,big red candle panicked,,,,fearful,volatile stock not for me
-2026-05-07,13:00:00,NSE,NIFTY26MAY23200CE,buy,75,350.00,260507007,T260507007,nifty 23200 break kiya calls lelo,premium gone,300.00,450.00,options,fomo,index breakout sab bol rahe profitable
-2026-05-07,14:20:00,NSE,NIFTY26MAY23200CE,sell,75,280.00,260507008,T260507008,,time decay and reversal,,,,anxious,options timing is everything
-2026-05-07,14:45:00,NSE,SBIN,buy,150,935.00,260507009,T260507009,psu banks rally chal raha hai late but ok,small loss,925.00,950.00,sector_rally,fomo,psu bank index strong
-2026-05-07,15:10:00,NSE,SBIN,sell,150,928.00,260507010,T260507010,,profit booking by others,,,,tired,reached late to party
-2026-05-08,09:18:00,NSE,IRFC,buy,500,180.00,260508001,T260508001,irfc trending on twitter everyone buying,holding with hope,,200.00,tip,fomo,retail favourite stock
-2026-05-08,11:30:00,NSE,IRFC,sell,500,172.00,260508002,T260508002,,panic sell big volume selling,,,,fearful,pump and dump maybe
-2026-05-08,12:00:00,NSE,ZOMATO,buy,200,195.00,260508003,T260508003,zomato news me aaya block deal hua,small profit,188.00,210.00,news,fomo,fii buying news everywhere
-2026-05-08,13:30:00,NSE,ZOMATO,sell,200,198.00,260508004,T260508004,,early exit scared of reversal,,,,anxious,atleast some profit
-2026-05-08,14:00:00,NSE,PAYTM,buy,100,850.00,260508005,T260508005,paytm short covering rally dont miss,big loss,820.00,900.00,short_squeeze,fomo,everyone saying bottom is in
-2026-05-08,15:00:00,NSE,PAYTM,sell,100,815.00,260508006,T260508006,,cut loss fake rally,,,,frustrated,tip trade failed again
-2026-05-09,09:25:00,NSE,TATAPOWER,buy,200,420.00,260509001,T260509001,power sector thema play chal raha,target hit nice,410.00,435.00,theme,confident,power demand story genuine
-2026-05-09,11:00:00,NSE,TATAPOWER,sell,200,438.00,260509002,T260509002,,full target,,,,excited,finally a good fomo trade
-2026-05-09,11:15:00,NSE,ADANIGREEN,buy,40,1850.00,260509003,T260509003,adani green bhi upar ja raha sab adani stocks,sl triggered,1800.00,1950.00,momentum_chase,fomo,renewable energy future hai
-2026-05-09,12:45:00,NSE,ADANIGREEN,sell,40,1790.00,260509004,T260509004,,stopped out deep loss,,,,fearful,adani stocks too volatile
-2026-05-09,13:30:00,NSE,HDFCBANK,buy,40,1720.00,260509005,T260509005,hdfc safe stock after losses,small win,1705.00,1745.00,safety,neutral,need to play safe now
-2026-05-09,14:30:00,NSE,HDFCBANK,sell,40,1735.00,260509006,T260509006,,profit book risk off,,,,calm,hdfc is reliable
-2026-05-10,09:30:00,NSE,RVNL,buy,300,280.00,260510001,T260510001,rvnl trending again infra play,profit taken,270.00,295.00,theme,fomo,railway budget allocation news
-2026-05-10,11:45:00,NSE,RVNL,sell,300,292.00,260510002,T260510002,,target almost reached,,,,confident,infra story playing out
-2026-05-10,12:00:00,NSE,IDEA,buy,1000,15.50,260510003,T260510003,idea vodafone merger news penny stock can double,loss,14.50,18.00,speculation,fomo,penny stock lottery ticket
-2026-05-10,14:00:00,NSE,IDEA,sell,1000,14.80,260510004,T260510004,,news was fake dump,,,,frustrated,never trust penny stocks
+2026-05-20,09:20:00,NSE,RELIANCE,buy,50,2850.00,260520001,T260520001,everyone saying reliance will go 3000 this week,sl hit bad entry,2820.00,2900.00,tip,fomo,twitter pe sab bol rahe the buy karo
+2026-05-20,09:45:00,NSE,RELIANCE,sell,50,2815.00,260520002,T260520002,,stopped out big loss,,,,anxious,entered at top
+2026-05-20,10:00:00,NSE,TATAMOTORS,buy,100,1180.00,260520003,T260520003,tata motors 5% up already missing rally,more loss,1160.00,1210.00,momentum_chase,fomo,already moved but maybe more upside
+2026-05-20,10:35:00,NSE,TATAMOTORS,sell,100,1155.00,260520004,T260520004,,cut loss reversal happening,,,,frustrated,chased the move
+2026-05-20,11:15:00,NSE,ADANIENT,buy,30,2600.00,260520005,T260520005,adani stocks flying dont want to miss,holding loss,2550.00,2700.00,momentum_chase,fomo,adani group is on fire everyone making money
+2026-05-20,12:30:00,NSE,ADANIENT,sell,30,2520.00,260520006,T260520006,,big red candle panicked,,,,fearful,volatile stock not for me
+2026-05-20,13:00:00,NSE,NIFTY26MAY23200CE,buy,75,350.00,260520007,T260520007,nifty 23200 break kiya calls lelo,premium gone,300.00,450.00,options,fomo,index breakout sab bol rahe profitable
+2026-05-20,14:20:00,NSE,NIFTY26MAY23200CE,sell,75,280.00,260520008,T260520008,,time decay and reversal,,,,anxious,options timing is everything
+2026-05-20,14:45:00,NSE,SBIN,buy,150,935.00,260520009,T260520009,psu banks rally chal raha hai late but ok,small loss,925.00,950.00,sector_rally,fomo,psu bank index strong
+2026-05-20,15:10:00,NSE,SBIN,sell,150,928.00,260520010,T260520010,,profit booking by others,,,,tired,reached late to party
+2026-05-21,09:18:00,NSE,IRFC,buy,500,180.00,260521001,T260521001,irfc trending on twitter everyone buying,holding with hope,,200.00,tip,fomo,retail favourite stock
+2026-05-21,11:30:00,NSE,IRFC,sell,500,172.00,260521002,T260521002,,panic sell big volume selling,,,,fearful,pump and dump maybe
+2026-05-21,12:00:00,NSE,ZOMATO,buy,200,195.00,260521003,T260521003,zomato news me aaya block deal hua,small profit,188.00,210.00,news,fomo,fii buying news everywhere
+2026-05-21,13:30:00,NSE,ZOMATO,sell,200,198.00,260521004,T260521004,,early exit scared of reversal,,,,anxious,atleast some profit
+2026-05-21,14:00:00,NSE,PAYTM,buy,100,850.00,260521005,T260521005,paytm short covering rally dont miss,big loss,820.00,900.00,short_squeeze,fomo,everyone saying bottom is in
+2026-05-21,15:00:00,NSE,PAYTM,sell,100,815.00,260521006,T260521006,,cut loss fake rally,,,,frustrated,tip trade failed again
+2026-05-22,09:25:00,NSE,TATAPOWER,buy,200,420.00,260522001,T260522001,power sector thema play chal raha,target hit nice,410.00,435.00,theme,confident,power demand story genuine
+2026-05-22,11:00:00,NSE,TATAPOWER,sell,200,438.00,260522002,T260522002,,full target,,,,excited,finally a good fomo trade
+2026-05-22,11:15:00,NSE,ADANIGREEN,buy,40,1850.00,260522003,T260522003,adani green bhi upar ja raha sab adani stocks,sl triggered,1800.00,1950.00,momentum_chase,fomo,renewable energy future hai
+2026-05-22,12:45:00,NSE,ADANIGREEN,sell,40,1790.00,260522004,T260522004,,stopped out deep loss,,,,fearful,adani stocks too volatile
+2026-05-22,13:30:00,NSE,HDFCBANK,buy,40,1720.00,260522005,T260522005,hdfc safe stock after losses,small win,1705.00,1745.00,safety,neutral,need to play safe now
+2026-05-22,14:30:00,NSE,HDFCBANK,sell,40,1735.00,260522006,T260522006,,profit book risk off,,,,calm,hdfc is reliable
+2026-05-25,09:30:00,NSE,RVNL,buy,300,280.00,260525001,T260525001,rvnl trending again infra play,profit taken,270.00,295.00,theme,fomo,railway budget allocation news
+2026-05-25,11:45:00,NSE,RVNL,sell,300,292.00,260525002,T260525002,,target almost reached,,,,confident,infra story playing out
+2026-05-25,12:00:00,NSE,IDEA,buy,1000,15.50,260525003,T260525003,idea vodafone merger news penny stock can double,loss,14.50,18.00,speculation,fomo,penny stock lottery ticket
+2026-05-25,14:00:00,NSE,IDEA,sell,1000,14.80,260525004,T260525004,,news was fake dump,,,,frustrated,never trust penny stocks

@@ -106,7 +106,7 @@ export function TradeFiltersComponent({ filters, onFiltersChange }: TradeFilters
         </Select>
 
         <Popover>
-          <PopoverTrigger>
+          <PopoverTrigger asChild>
             <Button variant="outline" className={cn(
               'justify-start text-left font-normal',
               !dateRange?.from && 'text-muted-foreground'

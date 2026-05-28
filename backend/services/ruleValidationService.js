@@ -595,14 +595,26 @@ async function validateTrade(userId, tradeData, options = {}) {
     (config.requireEmotionalCheck && !emotionCheck.passed);
   const blocked = config.blockOnFailure && hasBlockingViolation;
   
-  // Calculate discipline score
-  const totalChecks = ruleResults.length + checklistResults.length + (config.requireEmotionalCheck ? 1 : 0);
-  const failedChecks = warnings.length + blocks.length + checklistWarnings.length + 
-    checklistBlocks.length + (!emotionCheck.passed ? 1 : 0);
+  // Calculate discipline score using severity-based weights (matches TradeRuleCheck.calculateScore)
+  let deductions = 0;
   
-  const score = totalChecks > 0 
-    ? Math.round(((totalChecks - failedChecks) / totalChecks) * 100)
-    : 100;
+  ruleResults.forEach(result => {
+    if (!result.passed) {
+      deductions += result.action === 'block' ? 25 : 15;
+    }
+  });
+  
+  checklistResults.forEach(result => {
+    if (!result.passed) {
+      deductions += result.action === 'block' ? 20 : 10;
+    }
+  });
+  
+  if (config.requireEmotionalCheck && !emotionCheck.passed) {
+    deductions += 25;
+  }
+  
+  const score = Math.max(0, Math.round(100 - deductions));
   
   // Get violated rule types
   const violations = ruleResults.filter(r => !r.passed).map(r => r.ruleType);

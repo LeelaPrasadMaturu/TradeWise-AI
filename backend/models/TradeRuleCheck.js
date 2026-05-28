@@ -162,15 +162,16 @@ tradeRuleCheckSchema.methods.calculateScore = function() {
     return 100;
   }
   
-  // Weight: blocks are heavier than warnings
+  // Weight: severity-based deductions
+  // Block violations are more severe than warnings
   let deductions = 0;
   
   this.ruleResults.forEach(result => {
     if (!result.passed) {
       if (result.action === 'block') {
-        deductions += 20; // 20 points per block violation
+        deductions += 25; // 25 points per block violation (hard rule stop)
       } else {
-        deductions += 10; // 10 points per warning violation
+        deductions += 15; // 15 points per warning violation
       }
     }
   });
@@ -179,16 +180,16 @@ tradeRuleCheckSchema.methods.calculateScore = function() {
   this.checklistResponses.forEach(response => {
     if (!response.passed) {
       if (response.action === 'block') {
-        deductions += 15;
+        deductions += 20; // 20 points per checklist block
       } else {
-        deductions += 5;
+        deductions += 10; // 10 points per checklist warning
       }
     }
   });
   
   // Check emotion
   if (this.emotionalState && !this.emotionPassed) {
-    deductions += 15;
+    deductions += 25; // 25 points for emotional trading (most dangerous)
   }
   
   this.disciplineScore = Math.max(0, 100 - deductions);

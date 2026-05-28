@@ -43,16 +43,23 @@ async function calculatePeriodScore(userId, periodDays = 7) {
     };
   }
   
-  const avgScore = Math.round(
+  const rawAvg = Math.round(
     checks.reduce((sum, c) => sum + (c.disciplineScore || 100), 0) / checks.length
   );
   
+  const totalTrades = checks.length;
   const compliantTrades = checks.filter(c => c.warnings === 0 && c.blocks === 0).length;
+  const complianceRate = compliantTrades / totalTrades;
+  
+  // Blend: 70% raw average (per-trade deduction score) + 30% compliance rate
+  // This ensures systematic violations aren't masked by many passing rules
+  const blendedScore = Math.round(rawAvg * 0.7 + complianceRate * 0.3 * 100);
   
   return {
-    overallScore: avgScore,
-    score: avgScore,
-    totalTrades: checks.length,
+    overallScore: blendedScore,
+    score: blendedScore,
+    rawScore: rawAvg,
+    totalTrades,
     totalChecks: checks.length,
     period: `${periodDays} days`,
     compliantTrades,
