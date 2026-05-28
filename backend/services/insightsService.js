@@ -145,7 +145,7 @@ async function generateWeeklyInsights(userId, startDate, endDate) {
       behavioralPatterns: behavioralAnalysis ? {
         score: behavioralAnalysis.behavioralScore,
         tradingStyle: behavioralAnalysis.tradingStyle,
-        patternsDetected: behavioralAnalysis.patternsDetected.slice(0, 5).map(p => ({
+        patternsDetected: (behavioralAnalysis.patternsDetected || []).slice(0, 5).map(p => ({
           type: p.type,
           severity: p.severity,
           occurrences: p.occurrences || 1,
@@ -174,8 +174,8 @@ ${behavioralAnalysis ? `
 Behavioral Analysis:
 - Behavioral Score: ${behavioralAnalysis.behavioralScore}/100
 - Trading Style: ${behavioralAnalysis.tradingStyle}
-- Patterns Detected: ${behavioralAnalysis.patternsDetected.length}
-- Top Patterns: ${behavioralAnalysis.patternsDetected.slice(0, 3).map(p => p.type).join(', ')}
+- Patterns Detected: ${(behavioralAnalysis.patternsDetected || []).length}
+- Top Patterns: ${(behavioralAnalysis.patternsDetected || []).slice(0, 3).map(p => p.type).join(', ')}
 ` : ''}
 
 # TASK
@@ -254,7 +254,7 @@ Structure your analysis in the following sections with clear markdown formatting
 Generate the analysis now.`;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
       {
         contents: [
           {

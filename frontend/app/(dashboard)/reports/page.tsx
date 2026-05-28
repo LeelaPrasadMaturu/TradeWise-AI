@@ -289,7 +289,19 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          {insightsMutation.data && (
+          {insightsMutation.data && !insightsMutation.data.statistics && (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-medium text-lg mb-2">No Trades Found</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  {insightsMutation.data.message || 'No trades found for the selected period. Try a different date range or log some trades first.'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {insightsMutation.data?.statistics && (
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard

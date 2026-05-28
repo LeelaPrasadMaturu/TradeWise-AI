@@ -80,7 +80,7 @@ Example: With 10x leverage, investing ₹10,000 allows control over ₹1,00,000 
         }
       ],
       temperature: 0.7,
-      max_tokens: 500
+      max_tokens: 1500
     });
 
     if (!response || !response.message || !response.message.content || !response.message.content[0]) {

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ReactMarkdown from 'react-markdown';
 import {
   Select,
   SelectContent,
@@ -430,9 +431,9 @@ export default function LearnPage() {
                     <Badge variant="secondary">{explainMutation.data.term}</Badge>
                     <Badge variant="outline">{explainMutation.data.level}</Badge>
                   </div>
-                  <p className="text-sm leading-relaxed">
-                    {explainMutation.data.explanation}
-                  </p>
+                  <div className="text-sm leading-relaxed markdown-content">
+                    <ReactMarkdown>{explainMutation.data.explanation}</ReactMarkdown>
+                  </div>
                   {explainMutation.data.examples && explainMutation.data.examples.length > 0 && (
                     <div className="mt-3">
                       <p className="text-xs font-medium text-muted-foreground mb-2">Examples:</p>
