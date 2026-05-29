@@ -22,6 +22,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import api from '@/lib/api';
 import { Trade } from '@/types';
@@ -88,6 +97,12 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
   const [checklistResponses, setChecklistResponses] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [blockedData, setBlockedData] = useState<{
+    violations: string[];
+    score: number;
+    message: string;
+  } | null>(null);
+  const [pendingTradeData, setPendingTradeData] = useState<Partial<Trade> | null>(null);
   const [showDisciplineSection, setShowDisciplineSection] = useState(!!editTrade?.exitPrice);
 
   const { data: config } = useQuery({
@@ -141,8 +156,29 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
       router.push('/trades');
     },
+    onError: (err: Error & { status?: number; data?: { blocked?: boolean; violations?: string[]; score?: number; message?: string } }) => {
+      if (err.status === 403 && err.data?.blocked) {
+        setBlockedData({
+          violations: err.data.violations || [],
+          score: err.data.score || 0,
+          message: err.data.message || 'Trade blocked by your trading rules',
+        });
+      } else {
+        setError(err.message);
+      }
+    },
+  });
+
+  const forceCreateMutation = useMutation({
+    mutationFn: (data: Partial<Trade>) => api.createTrade({ ...data, skipValidation: true } as Partial<Trade> & { skipValidation: boolean }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
+      router.push('/trades');
+    },
     onError: (err: Error) => {
       setError(err.message);
+      setBlockedData(null);
     },
   });
 
@@ -159,7 +195,20 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
     },
   });
 
-  const isLoading = createMutation.isPending || updateMutation.isPending;
+  const isLoading = createMutation.isPending || updateMutation.isPending || forceCreateMutation.isPending;
+
+  const handleProceedAnyway = () => {
+    if (pendingTradeData) {
+      forceCreateMutation.mutate(pendingTradeData);
+    }
+    setBlockedData(null);
+    setPendingTradeData(null);
+  };
+
+  const handleCancelBlocked = () => {
+    setBlockedData(null);
+    setPendingTradeData(null);
+  };
 
   const onSubmit = async (data: TradeFormData) => {
     setError(null);
@@ -208,6 +257,7 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
     if (editTrade) {
       updateMutation.mutate({ id: editTrade._id, data: tradeData });
     } else {
+      setPendingTradeData(tradeData);
       createMutation.mutate(tradeData);
     }
   };
@@ -650,6 +700,48 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
           {editTrade ? 'Update Trade' : 'Save Trade'}
         </Button>
       </div>
+
+      <AlertDialog open={!!blockedData} onOpenChange={(open) => !open && handleCancelBlocked()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Discipline Rule Violation</AlertDialogTitle>
+            <AlertDialogDescription className="text-left space-y-3">
+              <p>
+                This trade violates your discipline rules. Proceeding will penalize your discipline score.
+              </p>
+
+              {blockedData && blockedData.violations.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Violations:</p>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                    {blockedData.violations.map((v, i) => (
+                      <li key={i}>{v}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {blockedData && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Discipline score impact:</span>
+                  <span className="font-mono font-semibold text-destructive">-{100 - blockedData.score} pts</span>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex justify-end gap-3">
+            <AlertDialogCancel onClick={handleCancelBlocked}>
+              Cancel Trade
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleProceedAnyway} disabled={forceCreateMutation.isPending}>
+              {forceCreateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              Proceed Anyway
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

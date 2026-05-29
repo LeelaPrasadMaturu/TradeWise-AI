@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/authMiddleware');
 const playbookService = require('../services/playbookService');
+const Trade = require('../models/Trade');
 
 /**
  * @route   GET /api/playbook
@@ -148,16 +149,24 @@ router.delete('/setups/:setupId', auth, async (req, res) => {
  */
 router.post('/auto-tag', auth, async (req, res) => {
   try {
-    const { trade } = req.body;
+    const { trade: tradeData } = req.body;
     
-    if (!trade) {
+    if (!tradeData) {
       return res.status(400).json({
         success: false,
         message: 'Trade data is required'
       });
     }
     
-    const result = await playbookService.autoTagTrade(req.user._id, trade);
+    const result = await playbookService.autoTagTrade(req.user._id, tradeData);
+    
+    // Persist the tag to DB if trade has an _id
+    if (result.matched && tradeData._id) {
+      await Trade.findByIdAndUpdate(
+        tradeData._id,
+        { $addToSet: { tags: result.setup.name.toLowerCase() } }
+      );
+    }
     
     res.json({
       success: true,

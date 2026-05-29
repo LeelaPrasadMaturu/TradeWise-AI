@@ -25,3 +25,7 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-25,11:45:00,NSE,RVNL,sell,300,292.00,260525002,T260525002,,target almost reached,,,,confident,infra story playing out
 2026-05-25,12:00:00,NSE,IDEA,buy,1000,15.50,260525003,T260525003,idea vodafone merger news penny stock can double,loss,14.50,18.00,speculation,fomo,penny stock lottery ticket
 2026-05-25,14:00:00,NSE,IDEA,sell,1000,14.80,260525004,T260525004,,news was fake dump,,,,frustrated,never trust penny stocks
+2026-05-29,09:25:00,NSE,RELIANCE,buy,60,2535.00,290925001,T290925001,Sab bol rahe hai reliance breakout hua buy karo,sl hit loss heavy,2500.00,2580.00,tip,fomo,twitter pe trend ho raha hai
+2026-05-29,10:30:00,NSE,RELIANCE,sell,60,2495.00,291030001,T291030001,,big loss stopped out,,,,anxious,phir se tip trade mein fas gaya
+2026-05-29,11:15:00,NSE,TATAMOTORS,buy,100,1005.00,291115001,T291115001,Tata motors 3% upar ja raha miss mat karo,more loss,985.00,1030.00,momentum_chase,fomo,bahut log le rahe hai main bhi le raha
+2026-05-29,12:00:00,NSE,TATAMOTORS,sell,100,990.00,291200002,T291200002,,reversal aaya double loss,,,,frustrated,haath jod ke promise ab tip nahi lunga

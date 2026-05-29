@@ -27,3 +27,7 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-26,11:30:00,NSE,HDFCBANK,sell,30,1772.00,260526002,T260526002,,pattern target achieved,,,,confident,technical analysis is key
 2026-05-28,12:15:00,NSE,TCS,buy,20,4290.00,260526003,T260526003,trendline bounce it sector bullish,profit taken,4265.00,4330.00,trendline,calm,clean setup with good rr
 2026-05-28,14:00:00,NSE,TCS,sell,20,4325.00,260526004,T260526004,,target reached,,,,neutral,consistent execution is the key
+2026-05-29,09:30:00,NSE,RELIANCE,buy,30,2520.00,290930001,T290930001,15min ema crossover breakout,target hit exactly,2485.00,2570.00,ema_cross,calm,waited for confirmation price action aligned
+2026-05-29,11:00:00,NSE,RELIANCE,sell,30,2568.00,291100001,T291100001,,target achieved perfect,,,,confident,plan worked as expected
+2026-05-29,11:30:00,NSE,TCS,buy,20,3890.00,291130001,T291130001,support zone bounce with volume confirmation,stopped out loss ok,3860.00,3940.00,support_bounce,calm,1% risk position sized correctly
+2026-05-29,12:30:00,NSE,TCS,sell,20,3855.00,291230001,T291230001,,sl hit moved to next trade,,,,neutral,loss is part of the process

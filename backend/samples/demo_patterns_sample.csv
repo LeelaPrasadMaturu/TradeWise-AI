@@ -45,3 +45,7 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-28,12:00:00,NSE,RELIANCE,sell,32,2845.00,260520002,T260520002,,target hit,,,,excited,event worked out,,,,no,
 2026-05-28,12:30:00,NSE,ICICIBANK,buy,42,1125.00,260520003,T260520003,banking strong afternoon trade,,1112.00,1150.00,sector,calm,banking momentum continuing,1112.00,,,no,
 2026-05-28,14:30:00,NSE,ICICIBANK,sell,42,1142.00,260520004,T260520004,,partial target hit,,,,neutral,good week overall,,,,yes,partial_profit
+2026-05-29,09:15:00,NSE,RELIANCE,buy,30,2520.00,290915001,T290915001,Breakout dekha resistance ke upar strong volume,,2480.00,2580.00,breakout,confident,clean morning setup,2480.00,,,no,
+2026-05-29,10:45:00,NSE,RELIANCE,sell,30,2575.00,291045001,T291045001,,target almost hit profit book kiya,,,confident,good trade today,,,,no,
+2026-05-29,11:00:00,NSE,TCS,buy,25,3880.00,291100001,T291100001,Support se pullback buying dip,,3840.00,3960.00,pullback,calm,risk reward good,3840.00,,,no,
+2026-05-29,11:45:00,NSE,TCS,sell,25,3860.00,291145001,T291145001,,SL hit loss liya,,,,neutral,market ulte side gaya,,,,no,

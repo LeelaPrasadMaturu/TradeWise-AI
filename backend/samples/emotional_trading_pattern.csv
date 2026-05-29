@@ -27,3 +27,7 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-28,11:45:00,NSE,HDFCBANK,sell,30,1775.00,260525002,T260525002,,near target good trade,,,,confident,finally a clean trade
 2026-05-28,12:30:00,NSE,TCS,buy,20,4310.00,260525003,T260525003,tcs steady stock,good exit,4290.00,4350.00,steady,neutral,copying yesterday style
 2026-05-28,14:00:00,NSE,TCS,sell,20,4345.00,260525004,T260525004,,full target hit,,,,confident,when i stay calm i trade better
+2026-05-29,09:20:00,NSE,RELIANCE,buy,35,2530.00,290920001,T290920001,reliance thoda upar gaya maybe momentum hai,early exit scared,2500.00,2570.00,scared_buy,anxious,confident nahi hu is trade mein
+2026-05-29,10:15:00,NSE,RELIANCE,sell,35,2545.00,291015001,T291015001,,darr lag raha tha hold karne ka,,,,fearful,sale kar diya baad mein aur upar gaya
+2026-05-29,11:00:00,NSE,INFY,buy,30,1610.00,291100002,T291100002,infy dip aaya shayad le loon,sl hit nahi hona chahiye,1590.00,1640.00,dip_buy,uncertain,kya sahi decision hai pata nahi
+2026-05-29,12:00:00,NSE,INFY,sell,30,1595.00,291200001,T291200001,,market gir gaya loss hua,,,,anxious,phir se galat kar diya

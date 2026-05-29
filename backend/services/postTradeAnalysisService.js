@@ -202,6 +202,7 @@ OUTPUT REQUIREMENTS:
 - End with 3 specific, actionable recommendations
 - Include what to avoid in similar future trades
 - Total length: roughly 12-20 lines — substantial but not a novel
+- Use ₹ (Indian Rupees) for all monetary values — never use $ or USD — the trader trades in Indian markets
 
 FORMAT:
 **Trade Verdict:** [One hard-hitting line that frames the trade]

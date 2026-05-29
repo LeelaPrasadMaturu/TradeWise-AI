@@ -7,6 +7,7 @@ const { importFromCSV, validateCSV, SUPPORTED_BROKERS } = require('../services/c
 const { validateTrade, saveValidationResult } = require('../services/ruleValidationService');
 const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisService');
 const { analyzeEmotion } = require('../services/emotionDetectService');
+const playbookService = require('../services/playbookService');
 
 /**
  * @swagger
@@ -235,10 +236,17 @@ router.post('/csv', auth, async (req, res) => {
           result: trade.result || 'open',
           tradeDate: trade.tradeDate,
           exitDate: trade.exitDate || undefined,
+          reason: trade.reason || undefined,
+          exitReason: trade.exitReason || undefined,
+          stopLoss: trade.stopLoss || undefined,
+          takeProfit: trade.takeProfit || undefined,
           notes: trade.notes || '',
           tags: trade.tags || [],
           source: 'csv_import'
         });
+
+        // Auto-tag with playbook setup
+        await playbookService.autoTagTrade(req.user._id, newTrade);
 
         await newTrade.save();
         

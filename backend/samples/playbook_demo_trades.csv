@@ -1,0 +1,18 @@
+trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion
+2026-05-29,09:15,NSE,RELIANCE,buy,10,2520.00,290915001,T290915001,Breakout dekha resistance ke upar strong volume bhi tha,,2480.00,2580.00,breakout,confident
+2026-05-29,11:30,NSE,RELIANCE,sell,10,2575.00,291130001,T291130001,,Target almost hit thoda profit book kar liya,,,,
+2026-05-29,09:45,NSE,TCS,buy,5,3880.00,290945001,T290945001,Support se pullback buying dip opportunity,,3840.00,3960.00,pullback,calm
+2026-05-29,10:30,NSE,TCS,sell,5,3860.00,291030001,T291030001,,Stop loss hit ho gaya gap down tha,,,,
+2026-05-29,10:00,NSE,INFY,buy,15,1600.00,291000001,T291000001,Range breakout bahut din se consolidation tha,,1570.00,1660.00,breakout,confident
+2026-05-29,12:15,NSE,INFY,sell,15,1655.00,291215001,T291215001,,Nice move booked at resistance level,,,,
+2026-05-29,10:30,NSE,HDFCBANK,buy,10,1540.00,291030002,T291030002,Support retest bounce aayega yahan se,,1510.00,1580.00,pullback,calm
+2026-05-29,11:00,NSE,HDFCBANK,sell,10,1535.00,291100001,T291100001,,Neeche gaya small loss liya,,,,
+2026-05-29,11:00,NSE,BAJFINANCE,buy,3,7200.00,291100002,T291100002,Breakout ho gaya momentum build ho raha hai,,7000.00,7500.00,breakout,confident
+2026-05-29,13:30,NSE,BAJFINANCE,sell,3,7450.00,291330001,T291330001,,Profit book kar liya resistance dikh raha hai,,,,
+2026-05-29,11:15,NSE,SBIN,buy,20,790.00,291115001,T291115001,Breakout from consolidation bank index bhi strong,,770.00,820.00,breakout,fomo
+2026-05-29,12:00,NSE,SBIN,sell,10,810.00,291200001,T291200001,,Partial profit booked first lot,,,,
+2026-05-29,12:45,NSE,SBIN,sell,10,805.00,291245001,T291245001,,Remaining exit market weak ho raha tha,,,,
+2026-05-29,11:45,NSE,TATAMOTORS,buy,8,1000.00,291145001,T291145001,Pullback support se lekin volume kam tha,,970.00,1040.00,pullback,uncertain
+2026-05-29,12:30,NSE,TATAMOTORS,sell,8,970.00,291230001,T291230001,,Stop loss hit glti thi trade lena,,,,
+2026-05-29,12:00,NSE,ICICIBANK,buy,15,1080.00,291200002,T291200002,Consolidation breakout bahut strong lag raha hai,,1050.00,1130.00,breakout,confident
+2026-05-29,13:45,NSE,ICICIBANK,sell,15,1125.00,291345001,T291345001,,Target almost poora hua profit booked,,,,

@@ -21,3 +21,9 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-21,12:30:00,NSE,INFY,sell,150,1810.00,260521006,T260521006,,panic selling,,,,fearful,should have stayed out
 2026-05-21,12:35:00,NSE,WIPRO,buy,200,590.00,260521007,T260521007,wipro cheap lets try,small loss ok,580.00,610.00,,anxious,just trying anything now
 2026-05-21,13:15:00,NSE,WIPRO,sell,200,582.00,260521008,T260521008,,another loss,,,,tired,cant trade today
+2026-05-29,09:30:00,NSE,TCS,buy,30,3890.00,290930002,T290930002,breakout dikha strong lag raha,sl hit,3865.00,3930.00,breakout,confident,clean setup
+2026-05-29,10:15:00,NSE,TCS,sell,30,3860.00,291015002,T291015002,,sl triggered loss,,,,frustrated,paisa gaya
+2026-05-29,10:18:00,NSE,TCS,buy,60,3865.00,291018002,T291018002,vaapis aayega double size recover karna hai,bigger loss,,3920.00,,revenge,loss recover karunga isi mein
+2026-05-29,11:00:00,NSE,TCS,sell,60,3830.00,291100003,T291100003,,panic exit double loss,,,,fearful,bade bhai ne maaf karo
+2026-05-29,11:15:00,NSE,SBIN,buy,150,795.00,291115002,T291115002,sbi strong dikh raha hai recover hoga,stopped out again,,810.00,,revenge,fir se try kar raha hu recover karne
+2026-05-29,12:30:00,NSE,SBIN,sell,150,785.00,291230002,T291230002,,market ne phir maara,,,,tired,aaj ka trading band

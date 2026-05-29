@@ -8,6 +8,7 @@ const { generatePostTradeAnalysis } = require('../services/postTradeAnalysisServ
 const { validateTrade, saveValidationResult } = require('../services/ruleValidationService');
 const UserTradingConfig = require('../models/UserTradingConfig');
 const { generateRealTimeAlerts } = require('../services/tradingCoachService');
+const playbookService = require('../services/playbookService');
 
 /**
  * @swagger
@@ -111,39 +112,37 @@ router.post('/', auth, async (req, res) => {
   try {
     const { checklistResponses, preTradeEmotion, skipValidation, ...tradeData } = req.body;
     
-    // Run pre-trade validation (unless explicitly skipped)
+    // Run pre-trade validation (always runs for scoring, but only blocks when !skipValidation)
     let validation = null;
     let ruleCheck = null;
     
-    if (!skipValidation) {
-      const config = await UserTradingConfig.getOrCreate(req.user._id);
+    const config = await UserTradingConfig.getOrCreate(req.user._id);
+    
+    if (config.checklistEnabled || await hasEnabledRules(req.user._id)) {
+      validation = await validateTrade(req.user._id, tradeData, {
+        checklistResponses: checklistResponses || [],
+        preTradeEmotion
+      });
       
-      if (config.checklistEnabled || await hasEnabledRules(req.user._id)) {
-        validation = await validateTrade(req.user._id, tradeData, {
-          checklistResponses: checklistResponses || [],
-          preTradeEmotion
-        });
+      // Block trade if validation fails and we're not skipping validation
+      if (!skipValidation && !validation.allowed) {
+        // Save the blocked attempt
+        ruleCheck = await saveValidationResult(
+          req.user._id, 
+          validation, 
+          tradeData, 
+          null
+        );
         
-        // Block trade if validation fails and blocking is enabled
-        if (!validation.allowed) {
-          // Save the blocked attempt
-          ruleCheck = await saveValidationResult(
-            req.user._id, 
-            validation, 
-            tradeData, 
-            null
-          );
-          
-          return res.status(403).json({
-            blocked: true,
-            message: 'Trade blocked by your trading rules',
-            ruleCheckId: ruleCheck._id,
-            violations: validation.blockReasons,
-            warnings: validation.warnings,
-            score: validation.score,
-            summary: validation.summary
-          });
-        }
+        return res.status(403).json({
+          blocked: true,
+          message: 'Trade blocked by your trading rules. If you want to proceed anyway, you can bypass this block — your discipline score will be penalized.',
+          ruleCheckId: ruleCheck._id,
+          violations: validation.blockReasons,
+          warnings: validation.warnings,
+          score: validation.score,
+          summary: validation.summary
+        });
       }
     }
     
@@ -169,6 +168,9 @@ router.post('/', auth, async (req, res) => {
       const extractedTags = extractTagsFromReason(trade.reason);
       trade.tags = [...new Set([...(trade.tags || []), ...extractedTags])];
     }
+
+    // Auto-tag with playbook setup
+    await playbookService.autoTagTrade(req.user._id, trade);
 
     await trade.save();
 
@@ -630,6 +632,9 @@ router.patch('/:id', auth, async (req, res) => {
         trade[update] = req.body[update];
       }
     });
+
+    // Auto-tag with playbook setup
+    await playbookService.autoTagTrade(req.user._id, trade);
     
     await trade.save();
 

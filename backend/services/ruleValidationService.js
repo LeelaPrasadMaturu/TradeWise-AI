@@ -591,9 +591,11 @@ async function validateTrade(userId, tradeData, options = {}) {
   const checklistBlocks = checklistResults.filter(r => !r.passed && r.action === 'block');
   
   // Determine if trade should be blocked
-  const hasBlockingViolation = blocks.length > 0 || checklistBlocks.length > 0 || 
+  // Discipline rules with action='block' always block
+  // Checklist and emotional blocks respect the global blockOnFailure setting
+  const hasBlockingViolation = checklistBlocks.length > 0 || 
     (config.requireEmotionalCheck && !emotionCheck.passed);
-  const blocked = config.blockOnFailure && hasBlockingViolation;
+  const blocked = (blocks.length > 0) || (config.blockOnFailure && hasBlockingViolation);
   
   // Calculate discipline score using severity-based weights (matches TradeRuleCheck.calculateScore)
   let deductions = 0;

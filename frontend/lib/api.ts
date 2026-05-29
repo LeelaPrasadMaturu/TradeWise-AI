@@ -57,8 +57,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-      throw new Error(error.message || `HTTP error! status: ${response.status}`);
+      const data = await response.json().catch(() => ({ message: 'An error occurred' }));
+      const err = new Error(data.message || `HTTP error! status: ${response.status}`) as Error & { status: number; data: Record<string, unknown> };
+      err.status = response.status;
+      err.data = data;
+      throw err;
     }
 
     return response.json();

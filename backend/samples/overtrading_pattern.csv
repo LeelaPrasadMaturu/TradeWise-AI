@@ -31,3 +31,11 @@ trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_i
 2026-05-28,14:45:00,NSE,TCS,sell,25,4250.00,260520030,T260520030,,took profit,,,,neutral,decent day overall
 2026-05-28,14:50:00,NSE,INFY,buy,40,1875.00,260520031,T260520031,last infy trade,closing position,1865.00,1895.00,momentum,tired,final trade of day
 2026-05-28,15:15:00,NSE,INFY,sell,40,1880.00,260520032,T260520032,,closing green,,,,tired,too many trades today feeling exhausted
+2026-05-29,09:20:00,NSE,RELIANCE,buy,25,2520.00,290920002,T290920002,reliance gap up momentum,quick scalp,2505.00,2540.00,scalp,excited,fast money
+2026-05-29,09:32:00,NSE,RELIANCE,sell,25,2535.00,290932001,T290932001,,profit booked,,,,excited,easy trade
+2026-05-29,09:35:00,NSE,TCS,buy,15,3880.00,290935001,T290935001,tcs also moving,small profit,3865.00,3900.00,scalp,excited,second trade
+2026-05-29,09:50:00,NSE,TCS,sell,15,3892.00,290950001,T290950001,,done next,,,,confident,two wins in 30 min
+2026-05-29,10:00:00,NSE,INFY,buy,40,1605.00,291000002,T291000002,infy breakout fast entry,sl hit,1595.00,1620.00,breakout,confident,hattrick
+2026-05-29,10:18:00,NSE,INFY,sell,40,1592.00,291018001,T291018001,,stopped out loss,,,,frustrated,could not get hattrick
+2026-05-29,10:20:00,NSE,HDFCBANK,buy,30,1545.00,291020001,T291020001,hdfc support le raha,loss again,1535.00,1560.00,support_buy,impatient,recover karna hai
+2026-05-29,10:45:00,NSE,HDFCBANK,sell,30,1532.00,291045002,T291045002,,cut loss isko bhi,,,,anxious,overtrading kar raha hu
