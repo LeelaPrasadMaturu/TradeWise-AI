@@ -1,6 +1,7 @@
 const { InferenceClient } = require('@huggingface/inference');
 const axios = require('axios');
 const constants = require('../config/constants');
+const cache = require('./cacheService');
 
 // Map of FinBERT sentiments to schema-valid values
 // detected: must be 'positive', 'negative', or 'neutral'
@@ -111,59 +112,63 @@ async function analyzeEmotion(text) {
     }
 
     // Use the FinBERT model via Hugging Face API
-    const response = await axios.post(
-      `https://api-inference.huggingface.co/models/${constants.AI_SERVICES.HUGGINGFACE.MODEL}`,
-      { inputs: text },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
+    const cacheKey = cache.generateKey('emotion:detect', text);
+
+    return await cache.wrap(cacheKey, async () => {
+      const response = await axios.post(
+        `https://api-inference.huggingface.co/models/${constants.AI_SERVICES.HUGGINGFACE.MODEL}`,
+        { inputs: text },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+
+      // Check if model is still loading (free tier loads on-demand)
+      if (response.data?.error?.includes('loading')) {
+        console.warn('FinBERT model is loading, using keyword fallback');
+        return detectEmotionFromKeywords(text);
       }
-    );
 
-    // Check if model is still loading (free tier loads on-demand)
-    if (response.data?.error?.includes('loading')) {
-      console.warn('FinBERT model is loading, using keyword fallback');
-      return detectEmotionFromKeywords(text);
-    }
+      // FinBERT returns an array of sentiment scores
+      const result = response.data;
+      if (!Array.isArray(result) || result.length === 0) {
+        throw new Error('Invalid response format from FinBERT');
+      }
 
-    // FinBERT returns an array of sentiment scores
-    const result = response.data;
-    if (!Array.isArray(result) || result.length === 0) {
-      throw new Error('Invalid response format from FinBERT');
-    }
+      // Get the highest confidence sentiment
+      const sentiments = result[0];
+      const topSentiment = Object.entries(sentiments).reduce((a, b) => a[1] > b[1] ? a : b);
 
-    // Get the highest confidence sentiment
-    const sentiments = result[0];
-    const topSentiment = Object.entries(sentiments).reduce((a, b) => a[1] > b[1] ? a : b);
-    
-    // Check for FOMO indicators in the text
-    const lowerText = text.toLowerCase();
-    const isFOMO = lowerText.includes('fomo') || 
-                   lowerText.includes('miss out') || 
-                   lowerText.includes('late') || 
-                   lowerText.includes('rushing') || 
-                   lowerText.includes('hurry') ||
-                   lowerText.includes('anxious');
-    
-    // Ensure confidence is a valid number between 0 and 1
-    const confidence = parseFloat(topSentiment[1]);
-    const validConfidence = isNaN(confidence) ? 0.5 : Math.max(0, Math.min(1, confidence));
-    
-    // FinBERT returns 'positive', 'negative', or 'neutral' which are valid enum values
-    const detectedSentiment = ['positive', 'negative', 'neutral'].includes(topSentiment[0]) 
-      ? topSentiment[0] 
-      : 'neutral';
-    
-    return {
-      detected: detectedSentiment,
-      confidence: validConfidence,
-      source: 'finbert',
-      rawSentiment: topSentiment[0],
-      emotionType: isFOMO ? 'fomo' : sentimentToEmotionType[detectedSentiment]
-    };
+      // Check for FOMO indicators in the text
+      const lowerText = text.toLowerCase();
+      const isFOMO = lowerText.includes('fomo') ||
+                     lowerText.includes('miss out') ||
+                     lowerText.includes('late') ||
+                     lowerText.includes('rushing') ||
+                     lowerText.includes('hurry') ||
+                     lowerText.includes('anxious');
+
+      // Ensure confidence is a valid number between 0 and 1
+      const confidence = parseFloat(topSentiment[1]);
+      const validConfidence = isNaN(confidence) ? 0.5 : Math.max(0, Math.min(1, confidence));
+
+      // FinBERT returns 'positive', 'negative', or 'neutral' which are valid enum values
+      const detectedSentiment = ['positive', 'negative', 'neutral'].includes(topSentiment[0])
+        ? topSentiment[0]
+        : 'neutral';
+
+      return {
+        detected: detectedSentiment,
+        confidence: validConfidence,
+        source: 'finbert',
+        rawSentiment: topSentiment[0],
+        emotionType: isFOMO ? 'fomo' : sentimentToEmotionType[detectedSentiment]
+      };
+    });
   } catch (error) {
     if (error.response?.status === 503 || error.response?.data?.error?.includes('loading')) {
       console.warn('FinBERT model is loading on HuggingFace free tier, using keyword fallback');

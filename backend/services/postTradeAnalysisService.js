@@ -1,6 +1,7 @@
 const axios = require('axios');
 const Trade = require('../models/Trade');
 const UserBaseline = require('../models/UserBaseline');
+const cache = require('./cacheService');
 
 // Check for immediate behavioral patterns on this specific trade
 async function checkImmediateBehavioralPatterns(trade) {
@@ -186,35 +187,65 @@ async function analyzeWithGemini(payload, warningsContext = '') {
     }
   }
 
-  const prompt = `You are a trading performance coach specializing in trader psychology and discipline. Analyze this trade JSON focusing on:
-1. Risk management decisions (especially stop loss handling)
-2. Exit timing and discipline
-3. Emotional state impact on decisions
-4. What went well vs mistakes
-5. 3-5 specific, actionable recommendations
+  const cacheKey = cache.generateKey('postTrade:analyze', payload.core.symbol, payload.core.tradeDate, payload.core.direction);
 
-Be direct about discipline failures if any. Don't sugarcoat.${disciplineContext}${warningsContext}
+  return await cache.wrap(cacheKey, async () => {
+    const prompt = `You are a no-nonsense trading performance coach specializing in trader psychology and discipline. Analyze this trade JSON with brutal honesty.
+
+TONE: Direct, blunt, psychologically sharp — call out excuses, self-deception, and lack of discipline. Be the voice the trader needs to hear, not the one they want to hear. Use vivid, memorable phrasing (e.g., "ghost trader", "order-entry clerk", "passenger in your own account").
+
+OUTPUT REQUIREMENTS:
+- Use markdown formatting with clear sections
+- Write 2-4 punchy sentences per section — NOT one-liners, but also NOT essays
+- Give a hard-hitting one-liner verdict at the top (e.g., "This is a classic example of a 'ghost trader' trade")
+- Include a brutally honest assessment of risk management, discipline failures, and emotional state
+- End with 3 specific, actionable recommendations
+- Include what to avoid in similar future trades
+- Total length: roughly 12-20 lines — substantial but not a novel
+
+FORMAT:
+**Trade Verdict:** [One hard-hitting line that frames the trade]
+
+### 🧠 Risk Management & Discipline
+[2-4 sentences — candid assessment of stop-loss handling, risk rules violated, whether the trader actually managed risk or just managed their anxiety]
+
+### ⚡ Emotional State & Decision-Making
+[2-4 sentences — how emotions drove the entry/exit, whether the trader was reactive vs proactive, any external reliance]
+
+### ✅ What Went Well vs Mistakes
+[2-4 sentences — one honest thing that went well (if anything), then the core mistakes]
+
+### 🎯 Actionable Recommendations
+1. [specific, non-generic action]
+2. [specific, non-generic action]
+3. [specific, non-generic action]
+
+### ⚠️ What To Avoid Next Time
+- [1-2 specific behaviors to eliminate]
+
+NO generic advice like "stay disciplined" or "follow your plan." Be specific to this trade. Be the mirror.${disciplineContext}${warningsContext}
 
 Trade data:
 ${JSON.stringify(payload, null, 2)}`;
 
-  const response = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
-    {
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ]
-    },
-    {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 15000
-    }
-  );
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
 
-  const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return text.trim();
+    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return text.trim();
+  });
 }
 
 async function generatePostTradeAnalysis(trade) {

@@ -4,7 +4,8 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
+import ReactMarkdown from 'react-markdown';
+import {
   ArrowLeft, 
   Pencil, 
   Trash2, 
@@ -369,24 +370,9 @@ export default function TradeDetailPage({ params }: PageProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <p>{trade.postTradeAnalysis.summary}</p>
+            <div className="text-sm leading-relaxed markdown-content">
+              <ReactMarkdown>{trade.postTradeAnalysis.summary}</ReactMarkdown>
             </div>
-            
-            {trade.postTradeAnalysis.recommendations && 
-             trade.postTradeAnalysis.recommendations.length > 0 && (
-              <div>
-                <span className="text-sm font-medium">Recommendations</span>
-                <ul className="mt-2 space-y-1">
-                  {trade.postTradeAnalysis.recommendations.map((rec, index) => (
-                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-profit">•</span>
-                      {rec}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {trade.postTradeAnalysis.behavioralWarnings && 
              trade.postTradeAnalysis.behavioralWarnings.length > 0 && (

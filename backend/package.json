@@ -4,8 +4,8 @@
   "description": "TradeWise AI Backend - Express.js API with MongoDB and AI integrations",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node scripts/kill-port.js 3000 && node server.js",
+    "dev": "node scripts/kill-port.js 3000 && nodemon server.js",
     "verify-env": "node scripts/verify-env.js",
     "test": "jest",
     "test:watch": "jest --watch",

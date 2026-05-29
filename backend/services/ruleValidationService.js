@@ -810,10 +810,85 @@ async function evaluateRulesRetroactively(userId, options = {}) {
   };
 }
 
+/**
+ * Check enabled discipline rules against current trading context for dashboard alerts
+ * Returns violations formatted as coach-alert compatible objects
+ */
+async function getActiveViolations(userId) {
+  const violations = [];
+  
+  try {
+    const rules = await TradingRule.getEnabledRules(userId);
+    if (rules.length === 0) return violations;
+    
+    const todayContext = await getTodayContext(userId);
+    const recentContext = await getRecentContext(userId, 120);
+    
+    for (const rule of rules) {
+      let failed = false;
+      let message = '';
+      
+      switch (rule.ruleType) {
+        case 'MAX_DAILY_TRADES': {
+          const { maxTrades } = rule.params;
+          if (todayContext.todayTradeCount > maxTrades) {
+            failed = true;
+            message = `Exceeded daily trade limit: ${todayContext.todayTradeCount}/${maxTrades} trades today`;
+          }
+          break;
+        }
+        case 'MAX_DAILY_LOSS': {
+          const { maxLossType, maxLossValue } = rule.params;
+          const currentLoss = Math.abs(todayContext.todayPnL);
+          if (maxLossType === 'amount' && todayContext.todayPnL < 0 && currentLoss > maxLossValue) {
+            failed = true;
+            message = `Exceeded daily loss limit: -₹${currentLoss.toFixed(0)} loss today (limit: ₹${maxLossValue})`;
+          } else if (maxLossType === 'percentage' && todayContext.todayTrades.length > 0) {
+            // Check if loss exceeds percentage of account - simplified check
+          }
+          break;
+        }
+        case 'MAX_CONSECUTIVE_LOSSES': {
+          const { maxConsecutive } = rule.params;
+          if (recentContext.consecutiveLosses >= maxConsecutive) {
+            failed = true;
+            message = `${recentContext.consecutiveLosses} consecutive losses — exceeds your ${maxConsecutive} loss limit`;
+          }
+          break;
+        }
+        case 'MAX_OPEN_POSITIONS': {
+          const { maxOpen } = rule.params;
+          if (recentContext.openPositions >= maxOpen) {
+            failed = true;
+            message = `${recentContext.openPositions} open positions — exceeds your ${maxOpen} position limit`;
+          }
+          break;
+        }
+      }
+      
+      if (failed) {
+        violations.push({
+          type: `RULE_${rule.ruleType}`,
+          severity: rule.action === 'block' ? 'high' : 'warning',
+          ruleId: rule._id,
+          ruleName: rule.name,
+          message,
+          action: rule.action
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error checking active rule violations:', error);
+  }
+  
+  return violations;
+}
+
 module.exports = {
   validateTrade,
   saveValidationResult,
   evaluateRulesRetroactively,
+  getActiveViolations,
   getTodayContext,
   getRecentContext,
   checkSingleRule,

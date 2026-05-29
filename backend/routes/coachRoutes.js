@@ -17,6 +17,7 @@ const {
 } = require('../services/tradingCoachService');
 const { triggerBriefingManually, getSchedulerStatus } = require('../services/schedulerService');
 const { getFlashbackWarnings, getFlashbackSummary } = require('../services/mistakeFlashbackService');
+const TradingRule = require('../models/TradingRule');
 
 /**
  * GET /api/coach/briefing
@@ -334,6 +335,7 @@ router.get('/game-plan', auth, async (req, res) => {
     const rulesReminder = [];
     const bestTradingHours = [];
     let emotionalCheck = null;
+    const enabledRules = await TradingRule.getEnabledRules(req.user._id);
     
     // Extract symbols to avoid from flashback warnings
     const symbolWarnings = flashback.warnings.filter(w => w.type === 'SYMBOL_LOSS');
@@ -376,10 +378,19 @@ router.get('/game-plan', auth, async (req, res) => {
       });
     }
     
+    // Add personalized rules reminders from active discipline rules
+    if (enabledRules.length > 0) {
+      enabledRules.slice(0, 3).forEach(rule => {
+        rulesReminder.push(rule.name);
+      });
+    }
+    
     // Add rules reminders from yesterday's violations
     if (briefing.rulesViolated && briefing.rulesViolated.rules) {
       briefing.rulesViolated.rules.forEach(rule => {
-        rulesReminder.push(`Remember: ${rule}`);
+        if (!rulesReminder.includes(rule)) {
+          rulesReminder.push(`Remember: ${rule}`);
+        }
       });
     }
     
@@ -389,11 +400,37 @@ router.get('/game-plan', auth, async (req, res) => {
       rulesReminder.push(`Avoid trading at ${worstHoursStr} (historically low win rate)`);
     }
     
-    // Default focus areas if none generated
+    // Personalized focus areas from discipline rules if AI didn't generate enough
+    if (focusAreas.length < 2 && enabledRules.length > 0) {
+      const ruleFocus = [];
+      enabledRules.forEach(rule => {
+        if (rule.ruleType === 'MAX_DAILY_TRADES') {
+          ruleFocus.push(`Max ${rule.params.maxTrades} trade(s) today — quality over quantity`);
+        } else if (rule.ruleType === 'REQUIRED_STOP_LOSS') {
+          ruleFocus.push('Set stop loss on every trade without exception');
+        } else if (rule.ruleType === 'REQUIRED_TAKE_PROFIT') {
+          ruleFocus.push('Define take profit before entering');
+        } else if (rule.ruleType === 'MAX_POSITION_SIZE') {
+          ruleFocus.push(`Keep position size under your ${rule.params.maxSizeType === 'percentage' ? rule.params.maxSizeValue + '%' : '₹' + rule.params.maxSizeValue} limit`);
+        } else if (rule.ruleType === 'REQUIRED_REASON') {
+          ruleFocus.push('Write your entry reason before taking the trade');
+        } else if (rule.ruleType === 'MAX_DAILY_LOSS') {
+          ruleFocus.push('Stick to your daily loss limit — walk away when hit');
+        } else {
+          ruleFocus.push(`Reminder: ${rule.name}`);
+        }
+      });
+      focusAreas.push(...ruleFocus.slice(0, 3));
+
+      if (briefing.worstHours && briefing.worstHours.length > 0 && focusAreas.length < 2) {
+        focusAreas.push(`Avoid your worst trading hours: ${briefing.worstHours.map(h => h.hour + ':00').join(', ')}`);
+      }
+    }
+    
+    // Final fallback — only if still empty after all personalized sources
     if (focusAreas.length === 0) {
-      focusAreas.push('Focus on high-quality setups only');
-      focusAreas.push('Follow your trading rules strictly');
-      focusAreas.push('Wait for clear market direction');
+      focusAreas.push('Log every trade and review your patterns');
+      focusAreas.push('Follow your pre-defined trading plan');
     }
     
     const gamePlan = {

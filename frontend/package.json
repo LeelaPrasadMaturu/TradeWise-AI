@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/kill-port.js 3001 && next dev -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/kill-port.js 3001 && next start -p 3001",
     "lint": "eslint"
   },
   "dependencies": {

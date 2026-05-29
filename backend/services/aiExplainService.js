@@ -1,6 +1,7 @@
 const { CohereClientV2 } = require('cohere-ai');
 const constants = require('../config/constants');
 const Trade = require('../models/Trade');
+const cache = require('./cacheService');
 
 const cohere = new CohereClientV2({
   token: process.env.COHERE_API_KEY
@@ -140,28 +141,32 @@ Example: With 10x leverage, investing ₹10,000 allows control over ₹1,00,000 
 `;
 }
 
-    const response = await cohere.chat({
-      model: constants.AI_SERVICES.COHERE.MODEL,
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1500
+    const cacheKey = cache.generateKey('aiExplain:term', userId, term, level);
+
+    return await cache.wrap(cacheKey, async () => {
+      const response = await cohere.chat({
+        model: constants.AI_SERVICES.COHERE.MODEL,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500
+      });
+
+      if (!response || !response.message || !response.message.content || !response.message.content[0]) {
+        throw new Error('Invalid response from Cohere API');
+      }
+
+      return {
+        term,
+        level,
+        explanation: response.message.content[0].text.trim(),
+        source: 'cohere'
+      };
     });
-
-    if (!response || !response.message || !response.message.content || !response.message.content[0]) {
-      throw new Error('Invalid response from Cohere API');
-    }
-
-    return {
-      term,
-      level,
-      explanation: response.message.content[0].text.trim(),
-      source: 'cohere'
-    };
   } catch (error) {
     console.error('Error in Cohere API:', error);
 

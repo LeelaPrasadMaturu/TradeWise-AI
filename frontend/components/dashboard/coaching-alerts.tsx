@@ -62,7 +62,7 @@ export function CoachingAlerts() {
             <Alert key={index} className={cn('border', config.className)}>
               <Icon className={cn('h-4 w-4', config.iconClassName)} />
               <AlertTitle className="text-sm font-medium">
-                {alert.type.replace(/_/g, ' ')}
+                {alert.ruleName || alert.type.replace(/_/g, ' ')}
               </AlertTitle>
               <AlertDescription className="text-sm text-muted-foreground">
                 {alert.message}

@@ -9,6 +9,8 @@ const TradingRule = require('../models/TradingRule');
 const TradeRuleCheck = require('../models/TradeRuleCheck');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { calculateUserBaseline } = require('./behavioralPatternService');
+const { getActiveViolations } = require('./ruleValidationService');
+const cache = require('./cacheService');
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
 
@@ -340,6 +342,10 @@ async function generateRealTimeAlerts(userId, trade = null) {
       const sizeAlert = await checkPositionSizeAlert(trade, userId);
       if (sizeAlert) alerts.push(sizeAlert);
     }
+
+    // Check discipline rule violations
+    const ruleViolations = await getActiveViolations(userId);
+    alerts.push(...ruleViolations);
   } catch (error) {
     console.error('Error generating real-time alerts:', error);
   }
@@ -477,32 +483,35 @@ async function generateAIFocusAreas(userId, yesterdaySummary, baseline) {
   }
   
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
+    const cacheKey = cache.generateKey('coach:focusAreas', userId);
     
-    const prompt = `You are a trading coach. Based on this trader's data, provide 2-3 SHORT focus areas for today (max 15 words each).
+    return await cache.wrap(cacheKey, async () => {
+      const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-Yesterday's Performance:
-- Trades: ${yesterdaySummary.tradeCount}, Wins: ${yesterdaySummary.wins}, Losses: ${yesterdaySummary.losses}
-- P&L: ₹${yesterdaySummary.pnl.toFixed(2)}
-- Rule Violations: ${yesterdaySummary.violations.map(v => v.ruleName).join(', ') || 'None'}
+      const prompt = `You are a trading coach. Based on this trader's data, provide 2-3 SHORT focus areas for today (max 15 words each).
 
-Trader Profile:
-- Trading Style: ${baseline?.tradingStyle || 'Unknown'}
-- Baseline Win Rate: ${baseline?.baselineWinRate?.toFixed(1) || 'N/A'}%
-- Avg Daily Trades: ${baseline?.avgDailyTradeCount?.toFixed(1) || 'N/A'}
+    Yesterday's Performance:
+    - Trades: ${yesterdaySummary.tradeCount}, Wins: ${yesterdaySummary.wins}, Losses: ${yesterdaySummary.losses}
+    - P&L: ₹${yesterdaySummary.pnl.toFixed(2)}
+    - Rule Violations: ${yesterdaySummary.violations.map(v => v.ruleName).join(', ') || 'None'}
 
-Return ONLY a JSON array of strings, like: ["Focus area 1", "Focus area 2"]`;
+    Trader Profile:
+    - Trading Style: ${baseline?.tradingStyle || 'Unknown'}
+    - Baseline Win Rate: ${baseline?.baselineWinRate?.toFixed(1) || 'N/A'}%
+    - Avg Daily Trades: ${baseline?.avgDailyTradeCount?.toFixed(1) || 'N/A'}
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    
-    // Parse JSON from response
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-    
-    return ['Follow your trading rules today', 'Wait for high-quality setups'];
+    Return ONLY a JSON array of strings, like: ["Focus area 1", "Focus area 2"]`;
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+
+      return ['Follow your trading rules today', 'Wait for high-quality setups'];
+    });
   } catch (error) {
     console.error('Error generating AI focus areas:', error);
     return ['Focus on discipline today', 'Stick to your playbook'];

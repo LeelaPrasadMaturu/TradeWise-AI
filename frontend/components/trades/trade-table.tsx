@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { MoreHorizontal, ArrowUpDown, Eye, Pencil, Trash2 } from 'lucide-react';
 import {
   Table,
@@ -52,8 +53,13 @@ export function TradeTable({
   sortDirection,
   onSort,
 }: TradeTableProps) {
+  const router = useRouter();
   const [deleteTradeId, setDeleteTradeId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const handleViewTrade = useCallback((id: string) => {
+    router.push(`/trades/${id}`);
+  }, [router]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteTrade(id),
@@ -106,11 +112,16 @@ export function TradeTable({
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
         {trades.map((trade) => (
-          <TradeCard
+          <div
             key={trade._id}
-            trade={trade}
-            onDelete={(t) => setDeleteTradeId(t._id)}
-          />
+            className="cursor-pointer"
+            onDoubleClick={() => handleViewTrade(trade._id)}
+          >
+            <TradeCard
+              trade={trade}
+              onDelete={(t) => setDeleteTradeId(t._id)}
+            />
+          </div>
         ))}
       </div>
 
@@ -139,7 +150,7 @@ export function TradeTable({
           </TableHeader>
           <TableBody>
             {trades.map((trade) => (
-              <TableRow key={trade._id} className="hover:bg-muted/50">
+              <TableRow key={trade._id} className="hover:bg-muted/50 cursor-pointer" onDoubleClick={() => handleViewTrade(trade._id)}>
                 <TableCell className="font-mono-numbers text-sm">
                   {formatDate(trade.tradeDate, 'MMM d')}
                 </TableCell>

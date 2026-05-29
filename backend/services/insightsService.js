@@ -1,6 +1,7 @@
 const Trade = require('../models/Trade');
 const axios = require('axios');
 const { analyzeAllPatterns, calculateUserBaseline } = require('./behavioralPatternService');
+const cache = require('./cacheService');
 
 // Helper function to format trade data for Gemini
 function formatTradeForAnalysis(trade) {
@@ -253,28 +254,32 @@ Structure your analysis in the following sections with clear markdown formatting
 ---
 Generate the analysis now.`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 60000 // 60 second timeout for larger payloads
-      }
-    );
+    const cacheKey = cache.generateKey('insights:weekly', userId, startDate, endDate);
 
-    const aiInsights = response.data.candidates[0].content.parts[0].text;
+    const aiInsights = await cache.wrap(cacheKey, async () => {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt
+                }
+              ]
+            }
+          ]
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        }
+      );
+
+      return response.data.candidates[0].content.parts[0].text;
+    });
 
     return {
       period: { startDate, endDate },

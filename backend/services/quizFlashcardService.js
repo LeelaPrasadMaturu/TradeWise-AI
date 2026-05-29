@@ -1,5 +1,6 @@
 const Trade = require('../models/Trade');
 const axios = require('axios');
+const cache = require('./cacheService');
 
 /**
  * Analyzes user's trading history to identify patterns, mistakes, and learning opportunities
@@ -160,49 +161,52 @@ Return ONLY valid JSON (no markdown, no code blocks):
   }
 }`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
-      {
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 4096,
+    const cacheKey = cache.generateKey('quiz:generate', userId, JSON.stringify(options));
+
+    return await cache.wrap(cacheKey, async () => {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+          }
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
         }
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000
-      }
-    );
+      );
 
-    const aiResponse = response.data.candidates[0].content.parts[0].text;
-    
-    // Parse JSON response (handle minor LLM formatting issues)
-    const quizData = JSON.parse(sanitizeJSON(aiResponse));
-    const answerMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+      const aiResponse = response.data.candidates[0].content.parts[0].text;
 
-    return {
-      quiz: {
-        questions: (quizData.quiz || []).map(q => ({
-          id: q.id,
-          question: q.question,
-          options: q.options || [],
-          correctAnswer: answerMap[q.correctAnswer] ?? q.correctAnswer,
-          explanation: q.explanation || '',
-          relatedPattern: q.category || '',
-          difficulty: q.difficulty
-        })),
-        difficulty,
-        generatedAt: new Date().toISOString()
-      },
-      summary: quizData.summary || {}
-    };
+      const quizData = JSON.parse(sanitizeJSON(aiResponse));
+      const answerMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+
+      return {
+        quiz: {
+          questions: (quizData.quiz || []).map(q => ({
+            id: q.id,
+            question: q.question,
+            options: q.options || [],
+            correctAnswer: answerMap[q.correctAnswer] ?? q.correctAnswer,
+            explanation: q.explanation || '',
+            relatedPattern: q.category || '',
+            difficulty: q.difficulty
+          })),
+          difficulty,
+          generatedAt: new Date().toISOString()
+        },
+        summary: quizData.summary || {}
+      };
+    });
 
   } catch (error) {
     console.error('Error generating personalized quiz:', error);
@@ -315,45 +319,48 @@ Return ONLY valid JSON (no markdown, no code blocks):
   }
 }`;
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
-      {
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 4096,
+    const cacheKey = cache.generateKey('flashcard:generate', userId, JSON.stringify(options));
+
+    return await cache.wrap(cacheKey, async () => {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`,
+        {
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 4096,
+          }
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
         }
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000
-      }
-    );
+      );
 
-    const aiResponse = response.data.candidates[0].content.parts[0].text;
-    
-    // Parse JSON response (handle minor LLM formatting issues)
-    const flashcardData = JSON.parse(sanitizeJSON(aiResponse));
-    const cards = flashcardData.flashcards || [];
-    const categories = [...new Set(cards.map(c => c.category).filter(Boolean))];
+      const aiResponse = response.data.candidates[0].content.parts[0].text;
 
-    return {
-      flashcards: cards.map(c => ({
-        id: c.id,
-        front: c.front,
-        back: c.back,
-        category: c.category || 'general',
-        difficulty: c.priority || 'medium'
-      })),
-      categories,
-      generatedAt: new Date().toISOString()
-    };
+      const flashcardData = JSON.parse(sanitizeJSON(aiResponse));
+      const cards = flashcardData.flashcards || [];
+      const categories = [...new Set(cards.map(c => c.category).filter(Boolean))];
+
+      return {
+        flashcards: cards.map(c => ({
+          id: c.id,
+          front: c.front,
+          back: c.back,
+          category: c.category || 'general',
+          difficulty: c.priority || 'medium'
+        })),
+        categories,
+        generatedAt: new Date().toISOString()
+      };
+    });
 
   } catch (error) {
     console.error('Error generating personalized flashcards:', error);
