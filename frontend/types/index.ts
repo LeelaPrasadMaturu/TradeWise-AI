@@ -182,6 +182,20 @@ export interface CoachingAlert {
   data?: Record<string, unknown>;
 }
 
+export interface GamePlanItem {
+  reason?: string;
+  type?: string;
+  message: string;
+  data?: {
+    hour?: number;
+    symbol?: string;
+    winRate?: number;
+    pnl?: number;
+    dayName?: string;
+  };
+  rules?: string[];
+}
+
 export interface PreMarketBriefing {
   generatedAt: string;
   greeting: string;
@@ -205,12 +219,17 @@ export interface PreMarketBriefing {
     warning: string;
   };
   bestHours?: {
-    hours: Array<{ hour: number; winRate: number }>;
+    hours: Array<{ hour: number; winRate: number; pnl?: number }>;
     message: string;
   };
   focusAreas: string[];
   tradingStyle: string;
   motivationalMessage: string;
+  gamePlan?: {
+    avoid: GamePlanItem[];
+    focus: GamePlanItem[];
+    rules: GamePlanItem[];
+  };
 }
 
 export interface PaginatedResponse<T> {
