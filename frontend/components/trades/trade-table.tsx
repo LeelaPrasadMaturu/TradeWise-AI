@@ -65,6 +65,9 @@ export function TradeTable({
     mutationFn: (id: string) => api.deleteTrade(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       setDeleteTradeId(null);
     },
   });

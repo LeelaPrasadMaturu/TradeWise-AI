@@ -66,6 +66,9 @@ export function CSVImportModal({ trigger }: CSVImportModalProps) {
       });
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
     },
     onError: (err: Error) => {
       setImportResult({

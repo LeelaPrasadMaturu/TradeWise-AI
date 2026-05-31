@@ -1,0 +1,25 @@
+trade_date,trade_time,exchange,symbol,trade_type,quantity,price,order_id,trade_id,entry_reason,exit_reason,stop_loss,take_profit,tags,emotion
+2026-05-25,09:30:00,NSE,RELIANCE,buy,10,2500.00,0525001,T0525001,Support level breakdown waiting for bounce,Not checked,2480.00,2530.00,support,neutral
+2026-05-25,10:00:00,NSE,RELIANCE,sell,10,2470.00,0525002,T0525002,,Support broke further booked loss,,,,,
+2026-05-25,10:15:00,NSE,RELIANCE,buy,16,2485.00,0525003,T0525003,Chasing this move doubling down after loss,,2470.00,2510.00,revenge,anxious
+2026-05-25,10:45:00,NSE,RELIANCE,sell,16,2455.00,0525004,T0525004,,Stop loss hit again bigger loss booked,,,,,
+2026-05-26,09:30:00,NSE,TCS,buy,7,3500.00,0526001,T0526001,Resistance level breakdown short entry,,3480.00,3550.00,breakdown,neutral
+2026-05-26,10:00:00,NSE,TCS,sell,7,3450.00,0526002,T0526002,,Resistance held loss booked,,,,,
+2026-05-26,10:30:00,NSE,INFY,buy,17,1400.00,0526003,T0526003,Momentum fading short position,,1380.00,1430.00,momentum,neutral
+2026-05-26,11:00:00,NSE,INFY,sell,17,1350.00,0526004,T0526004,,Continued downward loss booked,,,,,
+2026-05-26,11:30:00,NSE,HDFC,buy,15,1600.00,0526005,T0526005,Catching up to the trend short at resistance,,1580.00,1630.00,resistance,neutral
+2026-05-26,12:00:00,NSE,HDFC,sell,15,1550.00,0526006,T0526006,,Resistance held loss booked,,,,,
+2026-05-26,12:30:00,NSE,WIPRO,buy,48,500.00,0526007,T0526007,Trend reversal short entry,,490.00,515.00,reversal,neutral
+2026-05-26,13:00:00,NSE,WIPRO,sell,48,480.00,0526008,T0526008,,Trend continued loss booked,,,,,
+2026-05-27,09:00:00,NSE,SBIN,buy,30,800.00,0527001,T0527001,Opening strength breakout on volume,,795.00,810.00,breakout,neutral
+2026-05-27,09:15:00,NSE,SBIN,sell,30,805.00,0527002,T0527002,,Quick profit booking intraday,,,,,
+2026-05-27,09:20:00,NSE,AXIS,buy,22,1100.00,0527003,T0527003,Sector momentum continuation,,1095.00,1115.00,momentum,neutral
+2026-05-27,09:35:00,NSE,AXIS,sell,22,1110.00,0527004,T0527004,,Target hit quick scalp,,,,,
+2026-05-27,09:25:00,NSE,ITC,buy,53,450.00,0527005,T0527005,Volume breakout with support,,448.00,458.00,breakout,neutral
+2026-05-27,09:40:00,NSE,ITC,sell,53,455.00,0527006,T0527006,,Scalp booked profit,,,,,
+2026-05-27,10:00:00,NSE,M&M,buy,27,900.00,0527007,T0527007,Breakout from consolidation on good volume,,895.00,915.00,breakout,neutral
+2026-05-27,10:15:00,NSE,M&M,sell,27,910.00,0527008,T0527008,,Resistance broken target hit,,,,,
+2026-05-28,09:30:00,NSE,BAJAJ,buy,5,5000.00,0528001,T0528001,Fomo - everyone buying dont want to miss this rally,,4980.00,5060.00,fomo,excited
+2026-05-28,11:00:00,NSE,BAJAJ,sell,5,4950.00,0528002,T0528002,,Stop loss hit bought at top,,,,,
+2026-05-29,09:30:00,NSE,MARUTI,buy,2,10000.00,0529001,T0529001,Gap up opening with strong volume,,9950.00,10150.00,gapup,neutral
+2026-05-29,10:00:00,NSE,MARUTI,sell,2,10080.00,0529002,T0529002,,Target achieved booked profit,,,,,

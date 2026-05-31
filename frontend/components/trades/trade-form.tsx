@@ -154,6 +154,9 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       router.push('/trades');
     },
     onError: (err: Error & { status?: number; data?: { blocked?: boolean; violations?: string[]; score?: number; message?: string } }) => {
@@ -174,6 +177,9 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       router.push('/trades');
     },
     onError: (err: Error) => {
@@ -188,6 +194,9 @@ export function TradeForm({ editTrade, onSymbolChange, onEmotionChange }: TradeF
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       router.push('/trades');
     },
     onError: (err: Error) => {

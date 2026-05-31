@@ -208,6 +208,8 @@ export interface PreMarketBriefing {
     pnlFormatted: string;
     message: string;
   };
+  yesterdayMistakes: string[];
+  yesterdayGoodPoints: string[];
   rulesViolated?: {
     count: number;
     rules: string[];

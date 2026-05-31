@@ -16,7 +16,9 @@ import {
   Ban,
   Zap,
   BarChart3,
-  Shield
+  Shield,
+  ThumbsUp,
+  XCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -178,6 +180,52 @@ export function BriefingCard() {
             )}
           </div>
 
+          {/* Yesterday's Mistakes */}
+          {briefing.yesterdayMistakes?.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-destructive flex items-center gap-1">
+                  <XCircle className="h-3 w-3" /> Yesterday's Mistakes
+                </p>
+                <div className="grid gap-1.5 md:grid-cols-2">
+                  {briefing.yesterdayMistakes.map((item, i) => (
+                    <div 
+                      key={i} 
+                      className="flex items-start gap-2 rounded-md bg-destructive/5 border border-destructive/20 p-2"
+                    >
+                      <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-destructive">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Yesterday's Good Points */}
+          {briefing.yesterdayGoodPoints?.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-success flex items-center gap-1">
+                  <ThumbsUp className="h-3 w-3" /> Yesterday's Good Points
+                </p>
+                <div className="grid gap-1.5 md:grid-cols-2">
+                  {briefing.yesterdayGoodPoints.map((item, i) => (
+                    <div 
+                      key={i} 
+                      className="flex items-start gap-2 rounded-md bg-success/5 border border-success/20 p-2"
+                    >
+                      <ThumbsUp className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-success">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Day of Week Warning */}
           {briefing.dayOfWeekWarning && (
             <>
@@ -208,6 +256,7 @@ export function BriefingCard() {
                       {item.reason === 'TIME' && <Clock className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />}
                       {item.reason === 'SYMBOL' && <TrendingDown className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />}
                       {item.reason === 'DAY' && <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />}
+                      {item.reason === 'AI_COACH' && <Zap className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-destructive">{item.message}</p>
                         {item.data?.pnl !== undefined && (

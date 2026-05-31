@@ -71,6 +71,9 @@ export function QuickTradeSheet({ open, onOpenChange }: QuickTradeSheetProps) {
       api.createTrade(data),
     onSuccess: (trade) => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       reset();
       setError(null);
       onOpenChange(false);

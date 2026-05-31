@@ -146,6 +146,11 @@ router.post('/', auth, async (req, res) => {
       }
     }
     
+    // Auto-set entryTime to current time for manual entries
+    if (!tradeData.entryTime) {
+      tradeData.entryTime = new Date();
+    }
+
     const trade = new Trade({
       ...tradeData,
       user: req.user._id,
@@ -625,6 +630,11 @@ router.patch('/:id', auth, async (req, res) => {
   if (updates.includes('exitReason')) {
     const exitEmotion = await analyzeEmotion(req.body.exitReason);
     trade.exitEmotionAnalysis = exitEmotion;
+  }
+
+  // Auto-set exitTime when closing a trade
+  if (updates.includes('result') && ['win', 'loss', 'breakeven'].includes(req.body.result) && !updates.includes('exitTime')) {
+    trade.exitTime = new Date();
   }
 
     updates.forEach(update => {

@@ -58,6 +58,9 @@ export default function ImportPage() {
       queryClient.invalidateQueries({ queryKey: ['trades-all'] });
       queryClient.invalidateQueries({ queryKey: ['trade-stats'] });
       queryClient.invalidateQueries({ queryKey: ['behavioral-patterns'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
     },
   });
 

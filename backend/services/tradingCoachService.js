@@ -475,46 +475,69 @@ async function getDayOfWeekWarning(userId) {
 }
 
 /**
- * Generate AI focus areas using Gemini
+ * Generate AI coaching advice using Gemini
+ * Returns structured advice: yesterday's mistakes/good points + today's avoid/focus
  */
-async function generateAIFocusAreas(userId, yesterdaySummary, baseline) {
+async function generateAICoachingAdvice(userId, yesterdaySummary, baseline) {
   if (!process.env.GOOGLE_AI_API_KEY) {
-    return ['Focus on following your trading rules', 'Wait for A+ setups only'];
+    return {
+      mistakes: ['No AI advice available — missing API key'],
+      goodPoints: ['Keep following your trading plan'],
+      avoid: ['Review your recent losing trades for patterns'],
+      focus: ['Stick to your playbook setups', 'Wait for A+ entries only']
+    };
   }
   
   try {
-    const cacheKey = cache.generateKey('coach:focusAreas', userId);
+    const cacheKey = cache.generateKey('coach:advice', userId);
     
     return await cache.wrap(cacheKey, async () => {
       const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite' });
 
-      const prompt = `You are a trading coach. Based on this trader's data, provide 2-3 SHORT focus areas for today (max 15 words each).
+      const prompt = `You are a trading coach. Analyze this trader's yesterday performance and give actionable advice.
 
-    Yesterday's Performance:
-    - Trades: ${yesterdaySummary.tradeCount}, Wins: ${yesterdaySummary.wins}, Losses: ${yesterdaySummary.losses}
-    - P&L: ₹${yesterdaySummary.pnl.toFixed(2)}
-    - Rule Violations: ${yesterdaySummary.violations.map(v => v.ruleName).join(', ') || 'None'}
+Yesterday's Performance:
+- Trades: ${yesterdaySummary.tradeCount}, Wins: ${yesterdaySummary.wins}, Losses: ${yesterdaySummary.losses}
+- P&L: ₹${yesterdaySummary.pnl.toFixed(2)}
+- Rule Violations: ${yesterdaySummary.violations.map(v => v.ruleName).join(', ') || 'None'}
 
-    Trader Profile:
-    - Trading Style: ${baseline?.tradingStyle || 'Unknown'}
-    - Baseline Win Rate: ${baseline?.baselineWinRate?.toFixed(1) || 'N/A'}%
-    - Avg Daily Trades: ${baseline?.avgDailyTradeCount?.toFixed(1) || 'N/A'}
+Trader Profile:
+- Trading Style: ${baseline?.tradingStyle || 'Unknown'}
+- Baseline Win Rate: ${baseline?.baselineWinRate?.toFixed(1) || 'N/A'}%
+- Avg Daily Trades: ${baseline?.avgDailyTradeCount?.toFixed(1) || 'N/A'}
 
-    Return ONLY a JSON array of strings, like: ["Focus area 1", "Focus area 2"]`;
+Return a JSON object with these 4 arrays (2-3 short items each, max 12 words per item):
+
+1. "mistakes" — specific mistakes made yesterday (e.g. overtrading after loss, chasing breakouts, poor risk management)
+2. "goodPoints" — what they did well yesterday (e.g. followed stop loss, stuck to plan, good entries)
+3. "avoid" — what to avoid today based on patterns (e.g. don't trade before 10 AM, avoid revenge entries)
+4. "focus" — what to focus on improving today (e.g. wait for confirmation, take profits earlier)
+
+Return ONLY valid JSON like: {"mistakes":["..."],"goodPoints":["..."],"avoid":["..."],"focus":["..."]}`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text();
 
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
 
-      return ['Follow your trading rules today', 'Wait for high-quality setups'];
+      return {
+        mistakes: ['No specific mistakes identified'],
+        goodPoints: ['Keep following your plan'],
+        avoid: ['Review your recent trades for patterns'],
+        focus: ['Stick to your playbook', 'Wait for A+ setups']
+      };
     });
   } catch (error) {
-    console.error('Error generating AI focus areas:', error);
-    return ['Focus on discipline today', 'Stick to your playbook'];
+    console.error('Error generating AI coaching advice:', error);
+    return {
+      mistakes: ['Focus on identifying your pattern'],
+      goodPoints: ['Keep showing up with discipline'],
+      avoid: ['Don\'t repeat yesterday\'s mistakes'],
+      focus: ['Stick to your playbook setups']
+    };
   }
 }
 
@@ -564,8 +587,8 @@ async function generatePreMarketBriefing(userId) {
       ?.slice(0, 2)
       ?.map(s => ({ symbol: s.symbol, winRate: Math.round(s.winRate), pnl: s.totalPnL })) || [];
     
-    // Get AI-generated focus areas
-    const focusAreas = await generateAIFocusAreas(userId, yesterdaySummary, baseline);
+    // Get AI-generated coaching advice
+    const coachingAdvice = await generateAICoachingAdvice(userId, yesterdaySummary, baseline);
     
     // Build briefing
     const briefing = {
@@ -584,6 +607,9 @@ async function generatePreMarketBriefing(userId) {
           : `${yesterdaySummary.wins}W/${yesterdaySummary.losses}L (${yesterdaySummary.winRate}% win rate)`
       },
       
+      yesterdayMistakes: coachingAdvice.mistakes || [],
+      yesterdayGoodPoints: coachingAdvice.goodPoints || [],
+      
       rulesViolated: yesterdaySummary.violations.length > 0 ? {
         count: yesterdaySummary.violations.length,
         rules: [...new Set(yesterdaySummary.violations.map(v => v.ruleName))],
@@ -597,7 +623,7 @@ async function generatePreMarketBriefing(userId) {
         message: `Your best trading hours: ${bestHours.map(h => `${h.hour}:00 (${h.winRate}%)`).join(', ')}`
       } : null,
       
-      focusAreas,
+      focusAreas: coachingAdvice.focus,
       
       tradingStyle: baseline?.tradingStyle || 'UNKNOWN',
       
@@ -606,6 +632,10 @@ async function generatePreMarketBriefing(userId) {
       // Enhanced game plan section
       gamePlan: {
         avoid: [
+          ...(coachingAdvice.avoid.map(msg => ({
+            reason: 'AI_COACH',
+            message: msg
+          }))),
           ...(worstHours.map(h => ({
             reason: 'TIME',
             message: `Avoid trading at ${h.hour}:00 (${h.winRate}% win rate, ${h.pnl >= 0 ? '+' : ''}₹${h.pnl.toFixed(0)} P&L)`,
@@ -633,10 +663,10 @@ async function generatePreMarketBriefing(userId) {
             message: `${s.symbol} is profitable for you (${s.winRate}% win rate, +₹${s.pnl.toFixed(0)})`,
             data: s
           }))),
-          ...focusAreas.map(area => ({
+          ...(coachingAdvice.focus.map(area => ({
             type: 'AI_FOCUS',
             message: area
-          }))
+          })))
         ],
         rules: yesterdaySummary.violations.length > 0 ? [{
           type: 'VIOLATED_YESTERDAY',

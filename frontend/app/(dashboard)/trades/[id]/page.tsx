@@ -56,6 +56,9 @@ export default function TradeDetailPage({ params }: PageProps) {
     mutationFn: () => api.deleteTrade(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-comparison'] });
       router.push('/trades');
     },
   });

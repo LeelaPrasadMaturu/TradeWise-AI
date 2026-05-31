@@ -228,7 +228,16 @@ router.post('/csv', auth, async (req, res) => {
           contractExpiry: trade.contractExpiry || undefined,
           entryPrice: trade.entryPrice,
           exitPrice: trade.exitPrice || undefined,
-          entryTime: trade.entryTime || trade.tradeDate,
+          entryTime: (() => {
+            if (trade.entryTime) return trade.entryTime;
+            const fallback = trade.tradeDate;
+            if (fallback && fallback.getHours() === 0 && fallback.getMinutes() === 0) {
+              const d = new Date(fallback);
+              d.setHours(4, 0, 0, 0);
+              return d;
+            }
+            return fallback;
+          })(),
           exitTime: trade.exitTime || trade.exitDate || undefined,
           quantity: trade.quantity,
           direction: trade.direction,

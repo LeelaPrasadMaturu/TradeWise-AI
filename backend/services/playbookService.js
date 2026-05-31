@@ -7,10 +7,12 @@ const Playbook = require('../models/Playbook');
 const Trade = require('../models/Trade');
 
 /**
- * Get or create playbook for user
+ * Get or create playbook for user (always refreshes stats)
  */
 async function getPlaybook(userId) {
-  return Playbook.getOrCreate(userId);
+  const playbook = await Playbook.getOrCreate(userId);
+  await playbook.updateAllStats();
+  return playbook;
 }
 
 /**
