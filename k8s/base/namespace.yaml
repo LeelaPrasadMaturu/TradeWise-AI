@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tradewise
+  labels:
+    app.kubernetes.io/name: tradewise
+    app.kubernetes.io/part-of: tradewise-ai

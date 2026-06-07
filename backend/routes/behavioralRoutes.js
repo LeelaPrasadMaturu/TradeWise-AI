@@ -9,6 +9,15 @@ const {
   STYLE_CONFIG
 } = require('../services/behavioralPatternService');
 const Trade = require('../models/Trade');
+const redisService = require('../services/redisService');
+const { recordPatternDetected } = require('../utils/metrics');
+
+// Cache TTLs
+const CACHE_TTL = {
+  PATTERNS: 300,    // 5 min (frequently updated)
+  SUMMARY: 180,     // 3 min
+  BASELINE: 600,    // 10 min (computed from history)
+};
 
 /**
  * @swagger
@@ -95,14 +104,36 @@ const Trade = require('../models/Trade');
 router.get('/patterns', auth, async (req, res) => {
   try {
     const { period = '30d', type, severity } = req.query;
-    
-    // Parse period
     const periodDays = parseInt(period.replace('d', '')) || 30;
     
-    // Run full analysis
-    const analysis = await analyzeAllPatterns(req.user._id, periodDays);
+    // Cache key for pattern analysis
+    const cacheKey = redisService.generateKey(
+      'behavioral:patterns',
+      req.user._id.toString(),
+      period
+    );
     
-    // Apply filters if provided
+    // Use cache-aside with SWR
+    const { data: analysis, fromCache } = await redisService.getOrSetSWR(
+      cacheKey,
+      async () => {
+        const result = await analyzeAllPatterns(req.user._id, periodDays);
+        
+        // Record detected patterns for metrics
+        (result?.patternsDetected || []).forEach(p => {
+          recordPatternDetected(p.type, p.severity);
+        });
+        
+        return {
+          ...result,
+          computedAt: new Date().toISOString()
+        };
+      },
+      CACHE_TTL.PATTERNS,
+      60 // 1 min stale tolerance
+    );
+    
+    // Apply filters if provided (done on cached data)
     let filteredPatterns = analysis?.patternsDetected || [];
     
     if (type) {
@@ -119,7 +150,8 @@ router.get('/patterns', auth, async (req, res) => {
       ...analysis,
       patternsDetected: filteredPatterns,
       positivePatterns: analysis?.positivePatterns || [],
-      filters: { period, type, severity }
+      filters: { period, type, severity },
+      _cache: { hit: fromCache }
     });
   } catch (error) {
     console.error('Behavioral patterns error:', error);

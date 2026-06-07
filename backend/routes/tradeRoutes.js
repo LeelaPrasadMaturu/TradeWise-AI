@@ -10,6 +10,21 @@ const UserTradingConfig = require('../models/UserTradingConfig');
 const { generateRealTimeAlerts } = require('../services/tradingCoachService');
 const playbookService = require('../services/playbookService');
 
+// Distributed systems imports
+const redisService = require('../services/redisService');
+const { publishEvent } = require('../events/kafkaClient');
+const { TOPICS, createTradeEvent, EVENT_TYPES } = require('../events/topics');
+const { addAIAnalysisJob, addPatternDetectionJob, JOB_TYPES } = require('../queues');
+const { circuitBreakers } = require('../utils/circuitBreaker');
+const { recordTradeProcessed, recordPatternDetected } = require('../utils/metrics');
+
+// Cache TTLs
+const CACHE_TTL = {
+  STATS: 300,        // 5 min for stats
+  TRADE_LIST: 60,    // 1 min for trade list
+  SINGLE_TRADE: 120, // 2 min for single trade
+};
+
 /**
  * @swagger
  * components:
@@ -126,17 +141,18 @@ router.post('/', auth, async (req, res) => {
       
       // Block trade if validation fails and we're not skipping validation
       if (!skipValidation && !validation.allowed) {
-        // Save the blocked attempt
-        ruleCheck = await saveValidationResult(
-          req.user._id, 
-          validation, 
-          tradeData, 
-          null
-        );
+        ruleCheck = await saveValidationResult(req.user._id, validation, tradeData, null);
+        
+        // Publish rule violation event to Kafka
+        publishEvent(TOPICS.RULE_VIOLATED, createTradeEvent(EVENT_TYPES.RULE_VIOLATED, {
+          userId: req.user._id,
+          violations: validation.blockReasons,
+          tradeData: { symbol: tradeData.symbol, direction: tradeData.direction }
+        }, req.user._id)).catch(err => console.error('Kafka publish error:', err));
         
         return res.status(403).json({
           blocked: true,
-          message: 'Trade blocked by your trading rules. If you want to proceed anyway, you can bypass this block — your discipline score will be penalized.',
+          message: 'Trade blocked by your trading rules.',
           ruleCheckId: ruleCheck._id,
           violations: validation.blockReasons,
           warnings: validation.warnings,
@@ -164,12 +180,8 @@ router.post('/', auth, async (req, res) => {
       trade.disciplineScore = validation.score;
     }
 
-    // Analyze emotion and extract tags from trade reason if provided
+    // Synchronous tag extraction (fast, local operation)
     if (trade.reason) {
-      const emotionAnalysis = await analyzeEmotion(trade.reason);
-      trade.emotionAnalysis = emotionAnalysis;
-      
-      // Extract tags from reason and combine with user-provided tags
       const extractedTags = extractTagsFromReason(trade.reason);
       trade.tags = [...new Set([...(trade.tags || []), ...extractedTags])];
     }
@@ -181,28 +193,61 @@ router.post('/', auth, async (req, res) => {
 
     // Save rule check result and link to trade
     if (validation) {
-      ruleCheck = await saveValidationResult(
-        req.user._id, 
-        validation, 
-        tradeData, 
-        trade._id
-      );
+      ruleCheck = await saveValidationResult(req.user._id, validation, tradeData, trade._id);
       trade.ruleCheck = ruleCheck._id;
       await trade.save();
     }
 
-    // Generate initial post-trade analysis if exit data present
-    if (trade.exitPrice || trade.exitReason || trade.postTradeReview) {
-      try {
-        trade.postTradeAnalysis = await generatePostTradeAnalysis(trade);
-        await trade.save();
-      } catch (e) {
-        console.error('Post-trade analysis error:', e.message);
-      }
+    // Record metric
+    recordTradeProcessed('create', 'success');
+
+    // ========== ASYNC EVENT-DRIVEN PROCESSING ==========
+    // Instead of synchronous AI calls, we publish events and queue jobs
+    
+    // 1. Publish trade.created event to Kafka
+    publishEvent(TOPICS.TRADE_CREATED, createTradeEvent(EVENT_TYPES.TRADE_CREATED, {
+      tradeId: trade._id,
+      userId: req.user._id,
+      symbol: trade.symbol,
+      direction: trade.direction,
+      entryPrice: trade.entryPrice,
+      quantity: trade.quantity,
+      reason: trade.reason,
+      hasExit: !!(trade.exitPrice || trade.exitReason),
+    }, req.user._id)).catch(err => console.error('Kafka publish error:', err));
+
+    // 2. Queue emotion detection job (async via BullMQ)
+    if (trade.reason) {
+      addAIAnalysisJob(JOB_TYPES.EMOTION_DETECTION, {
+        tradeId: trade._id.toString(),
+        text: trade.reason,
+        field: 'emotionAnalysis'
+      }).catch(err => console.error('Queue job error:', err));
     }
+
+    // 3. Queue post-trade analysis if exit data present
+    if (trade.exitPrice || trade.exitReason || trade.postTradeReview) {
+      addAIAnalysisJob(JOB_TYPES.POST_TRADE_ANALYSIS, {
+        tradeId: trade._id.toString(),
+        userId: req.user._id.toString(),
+      }, { priority: 1 }).catch(err => console.error('Queue job error:', err));
+    }
+
+    // 4. Queue behavioral pattern detection
+    addPatternDetectionJob(JOB_TYPES.BEHAVIORAL_ANALYSIS, {
+      userId: req.user._id.toString(),
+      tradeId: trade._id.toString(),
+      trigger: 'trade_created'
+    }, { delay: 2000 }).catch(err => console.error('Queue job error:', err));
+
+    // 5. Invalidate user's cached stats (they changed)
+    redisService.invalidate(`stats:${req.user._id}:*`).catch(() => {});
+    redisService.invalidate(`trades:${req.user._id}:*`).catch(() => {});
     
     // Build response
     const response = trade.toObject();
+    response.processingStatus = 'queued'; // Indicate async processing
+    
     if (validation) {
       response.ruleValidation = {
         score: validation.score,
@@ -211,7 +256,7 @@ router.post('/', auth, async (req, res) => {
       };
     }
     
-    // Generate real-time coach alerts
+    // Generate real-time coach alerts (fast, sync operation)
     try {
       const user = await User.findById(req.user._id);
       if (user?.coachingPreferences?.enableRealTimeAlerts !== false) {
@@ -223,6 +268,7 @@ router.post('/', auth, async (req, res) => {
     
     res.status(201).json(response);
   } catch (error) {
+    recordTradeProcessed('create', 'error');
     res.status(500).json({ message: 'Error creating trade', error: error.message });
   }
 });
@@ -372,95 +418,112 @@ router.get('/', auth, async (req, res) => {
  */
 router.get('/stats', auth, async (req, res) => {
   try {
-    const stats = await Trade.aggregate([
-      { $match: { user: req.user._id } },
-      {
-        $group: {
-          _id: null,
-          totalTrades: { $sum: 1 },
-          openTrades: {
-            $sum: { $cond: [{ $eq: ['$result', 'open'] }, 1, 0] }
-          },
-          winningTrades: {
-            $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
-          },
-          losingTrades: {
-            $sum: { $cond: [{ $eq: ['$result', 'loss'] }, 1, 0] }
-          },
-          breakevenTrades: {
-            $sum: { $cond: [{ $eq: ['$result', 'breakeven'] }, 1, 0] }
-          },
-          totalProfitLoss: { $sum: '$profitLoss' },
-          avgProfitLoss: { $avg: '$profitLoss' },
-          avgWin: {
-            $avg: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', null] }
-          },
-          avgLoss: {
-            $avg: { $cond: [{ $eq: ['$result', 'loss'] }, '$profitLoss', null] }
-          },
-          totalWinAmount: {
-            $sum: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', 0] }
-          },
-          totalLossAmount: {
-            $sum: { $cond: [{ $eq: ['$result', 'loss'] }, { $abs: '$profitLoss' }, 0] }
+    const cacheKey = redisService.generateKey('stats', req.user._id.toString(), 'overview');
+    
+    // Try cache-aside pattern with stale-while-revalidate
+    const { data: cachedStats, fromCache, stale } = await redisService.getOrSetSWR(
+      cacheKey,
+      async () => {
+        // Expensive aggregation - only runs on cache miss
+        const stats = await Trade.aggregate([
+          { $match: { user: req.user._id } },
+          {
+            $group: {
+              _id: null,
+              totalTrades: { $sum: 1 },
+              openTrades: {
+                $sum: { $cond: [{ $eq: ['$result', 'open'] }, 1, 0] }
+              },
+              winningTrades: {
+                $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
+              },
+              losingTrades: {
+                $sum: { $cond: [{ $eq: ['$result', 'loss'] }, 1, 0] }
+              },
+              breakevenTrades: {
+                $sum: { $cond: [{ $eq: ['$result', 'breakeven'] }, 1, 0] }
+              },
+              totalProfitLoss: { $sum: '$profitLoss' },
+              avgProfitLoss: { $avg: '$profitLoss' },
+              avgWin: {
+                $avg: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', null] }
+              },
+              avgLoss: {
+                $avg: { $cond: [{ $eq: ['$result', 'loss'] }, '$profitLoss', null] }
+              },
+              totalWinAmount: {
+                $sum: { $cond: [{ $eq: ['$result', 'win'] }, '$profitLoss', 0] }
+              },
+              totalLossAmount: {
+                $sum: { $cond: [{ $eq: ['$result', 'loss'] }, { $abs: '$profitLoss' }, 0] }
+              }
+            }
           }
-        }
-      }
-    ]);
+        ]);
 
-    const raw = stats[0] || {
-      totalTrades: 0, openTrades: 0, winningTrades: 0, losingTrades: 0,
-      breakevenTrades: 0, totalProfitLoss: 0, avgProfitLoss: 0,
-      avgWin: 0, avgLoss: 0, totalWinAmount: 0, totalLossAmount: 0
-    };
+        const raw = stats[0] || {
+          totalTrades: 0, openTrades: 0, winningTrades: 0, losingTrades: 0,
+          breakevenTrades: 0, totalProfitLoss: 0, avgProfitLoss: 0,
+          avgWin: 0, avgLoss: 0, totalWinAmount: 0, totalLossAmount: 0
+        };
 
-    const closedTrades = raw.winningTrades + raw.losingTrades + raw.breakevenTrades;
-    const winRate = closedTrades > 0 ? (raw.winningTrades / closedTrades) * 100 : 0;
-    const profitFactor = raw.totalLossAmount > 0 ? raw.totalWinAmount / raw.totalLossAmount : 0;
+        const closedTrades = raw.winningTrades + raw.losingTrades + raw.breakevenTrades;
+        const winRate = closedTrades > 0 ? (raw.winningTrades / closedTrades) * 100 : 0;
+        const profitFactor = raw.totalLossAmount > 0 ? raw.totalWinAmount / raw.totalLossAmount : 0;
 
-    // Get win rate by tag
-    const tagStats = await Trade.aggregate([
-      { $match: { user: req.user._id } },
-      { $unwind: '$tags' },
-      {
-        $group: {
-          _id: '$tags',
-          total: { $sum: 1 },
-          wins: {
-            $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
+        // Get win rate by tag
+        const tagStats = await Trade.aggregate([
+          { $match: { user: req.user._id } },
+          { $unwind: '$tags' },
+          {
+            $group: {
+              _id: '$tags',
+              total: { $sum: 1 },
+              wins: {
+                $sum: { $cond: [{ $eq: ['$result', 'win'] }, 1, 0] }
+              },
+              totalPnL: { $sum: '$profitLoss' }
+            }
           },
-          totalPnL: { $sum: '$profitLoss' }
-        }
-      },
-      {
-        $project: {
-          tag: '$_id',
-          count: '$total',
-          wins: 1,
-          winRate: { $multiply: [{ $divide: ['$wins', '$total'] }, 100] },
-          totalPnL: 1
-        }
-      }
-    ]);
+          {
+            $project: {
+              tag: '$_id',
+              count: '$total',
+              wins: 1,
+              winRate: { $multiply: [{ $divide: ['$wins', '$total'] }, 100] },
+              totalPnL: 1
+            }
+          }
+        ]);
 
-    const byTag = {};
-    tagStats.forEach(t => {
-      byTag[t.tag] = { count: t.count, wins: t.wins, winRate: t.winRate, totalPnL: t.totalPnL };
-    });
+        const byTag = {};
+        tagStats.forEach(t => {
+          byTag[t.tag] = { count: t.count, wins: t.wins, winRate: t.winRate, totalPnL: t.totalPnL };
+        });
+
+        return {
+          totalTrades: raw.totalTrades,
+          openTrades: raw.openTrades,
+          closedTrades,
+          winningTrades: raw.winningTrades,
+          losingTrades: raw.losingTrades,
+          winRate,
+          totalProfitLoss: raw.totalProfitLoss,
+          avgProfitLoss: raw.avgProfitLoss || 0,
+          avgWin: raw.avgWin || 0,
+          avgLoss: raw.avgLoss || 0,
+          profitFactor,
+          byTag,
+          computedAt: new Date().toISOString()
+        };
+      },
+      CACHE_TTL.STATS,
+      60 // 1 min stale tolerance
+    );
 
     res.json({
-      totalTrades: raw.totalTrades,
-      openTrades: raw.openTrades,
-      closedTrades,
-      winningTrades: raw.winningTrades,
-      losingTrades: raw.losingTrades,
-      winRate,
-      totalProfitLoss: raw.totalProfitLoss,
-      avgProfitLoss: raw.avgProfitLoss || 0,
-      avgWin: raw.avgWin || 0,
-      avgLoss: raw.avgLoss || 0,
-      profitFactor,
-      byTag
+      ...cachedStats,
+      _cache: { hit: fromCache, stale }
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching trade statistics', error: error.message });
@@ -615,27 +678,36 @@ router.patch('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Trade not found' });
     }
 
-    // If reason is updated, re-analyze emotion and extract tags
+    const wasOpen = trade.result === 'open';
+
+    // If reason is updated, queue emotion re-analysis (async)
     if (updates.includes('reason')) {
-      const emotionAnalysis = await analyzeEmotion(req.body.reason);
-      trade.emotionAnalysis = emotionAnalysis;
-      
-      // Extract tags from reason and combine with user-provided tags
       const extractedTags = extractTagsFromReason(req.body.reason);
       const userTags = req.body.tags || trade.tags || [];
       trade.tags = [...new Set([...userTags, ...extractedTags])];
+      
+      // Queue async emotion analysis
+      addAIAnalysisJob(JOB_TYPES.EMOTION_DETECTION, {
+        tradeId: trade._id.toString(),
+        text: req.body.reason,
+        field: 'emotionAnalysis'
+      }).catch(err => console.error('Queue job error:', err));
     }
 
-  // If exitReason is updated, analyze exit emotion
-  if (updates.includes('exitReason')) {
-    const exitEmotion = await analyzeEmotion(req.body.exitReason);
-    trade.exitEmotionAnalysis = exitEmotion;
-  }
+    // If exitReason is updated, queue exit emotion analysis (async)
+    if (updates.includes('exitReason')) {
+      addAIAnalysisJob(JOB_TYPES.EMOTION_DETECTION, {
+        tradeId: trade._id.toString(),
+        text: req.body.exitReason,
+        field: 'exitEmotionAnalysis'
+      }).catch(err => console.error('Queue job error:', err));
+    }
 
-  // Auto-set exitTime when closing a trade
-  if (updates.includes('result') && ['win', 'loss', 'breakeven'].includes(req.body.result) && !updates.includes('exitTime')) {
-    trade.exitTime = new Date();
-  }
+    // Auto-set exitTime when closing a trade
+    const isClosing = updates.includes('result') && ['win', 'loss', 'breakeven'].includes(req.body.result);
+    if (isClosing && !updates.includes('exitTime')) {
+      trade.exitTime = new Date();
+    }
 
     updates.forEach(update => {
       if (update !== 'reason' && update !== 'tags') {
@@ -647,18 +719,53 @@ router.patch('/:id', auth, async (req, res) => {
     await playbookService.autoTagTrade(req.user._id, trade);
     
     await trade.save();
+    recordTradeProcessed('update', 'success');
 
-    // If exit-related fields or review changed, regenerate analysis
+    // ========== ASYNC EVENT-DRIVEN PROCESSING ==========
+    
+    // Determine event type
+    const isClosed = wasOpen && ['win', 'loss', 'breakeven'].includes(trade.result);
+    const eventType = isClosed ? EVENT_TYPES.TRADE_CLOSED : EVENT_TYPES.TRADE_UPDATED;
+    const topic = isClosed ? TOPICS.TRADE_CLOSED : TOPICS.TRADE_UPDATED;
+
+    // Publish Kafka event
+    publishEvent(topic, createTradeEvent(eventType, {
+      tradeId: trade._id,
+      userId: req.user._id,
+      symbol: trade.symbol,
+      result: trade.result,
+      profitLoss: trade.profitLoss,
+      updates: updates,
+    }, req.user._id)).catch(err => console.error('Kafka publish error:', err));
+
+    // If exit-related fields changed, queue post-trade analysis (async)
     if (updates.some(u => ['exitPrice', 'exitReason', 'postTradeReview', 'result', 'profitLoss'].includes(u))) {
-      try {
-        trade.postTradeAnalysis = await generatePostTradeAnalysis(trade);
-        await trade.save();
-      } catch (e) {
-        console.error('Post-trade analysis error:', e.message);
-      }
+      addAIAnalysisJob(JOB_TYPES.POST_TRADE_ANALYSIS, {
+        tradeId: trade._id.toString(),
+        userId: req.user._id.toString(),
+      }, { priority: 1 }).catch(err => console.error('Queue job error:', err));
     }
-    res.json(trade);
+
+    // If trade was closed, trigger pattern detection
+    if (isClosed) {
+      addPatternDetectionJob(JOB_TYPES.BEHAVIORAL_ANALYSIS, {
+        userId: req.user._id.toString(),
+        tradeId: trade._id.toString(),
+        trigger: 'trade_closed'
+      }).catch(err => console.error('Queue job error:', err));
+    }
+
+    // Invalidate cached data
+    redisService.invalidate(`stats:${req.user._id}:*`).catch(() => {});
+    redisService.invalidate(`trades:${req.user._id}:*`).catch(() => {});
+    redisService.del(redisService.generateKey('trade', trade._id.toString())).catch(() => {});
+
+    const response = trade.toObject();
+    response.processingStatus = 'queued';
+    
+    res.json(response);
   } catch (error) {
+    recordTradeProcessed('update', 'error');
     res.status(500).json({ message: 'Error updating trade', error: error.message });
   }
 });
@@ -802,8 +909,22 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Trade not found' });
     }
 
+    recordTradeProcessed('delete', 'success');
+
+    // Invalidate all user caches
+    redisService.invalidate(`stats:${req.user._id}:*`).catch(() => {});
+    redisService.invalidate(`trades:${req.user._id}:*`).catch(() => {});
+    redisService.del(redisService.generateKey('trade', trade._id.toString())).catch(() => {});
+
+    // Queue baseline recalculation since trade history changed
+    addPatternDetectionJob(JOB_TYPES.BASELINE_RECALCULATION, {
+      userId: req.user._id.toString(),
+      trigger: 'trade_deleted'
+    }, { delay: 5000 }).catch(err => console.error('Queue job error:', err));
+
     res.json({ message: 'Trade deleted successfully' });
   } catch (error) {
+    recordTradeProcessed('delete', 'error');
     res.status(500).json({ message: 'Error deleting trade', error: error.message });
   }
 });

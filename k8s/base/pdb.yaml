@@ -1,0 +1,28 @@
+# Pod Disruption Budget for API
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-pdb
+  namespace: tradewise
+  labels:
+    app.kubernetes.io/name: api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api
+
+---
+# Pod Disruption Budget for Worker
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: worker-pdb
+  namespace: tradewise
+  labels:
+    app.kubernetes.io/name: worker
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: worker

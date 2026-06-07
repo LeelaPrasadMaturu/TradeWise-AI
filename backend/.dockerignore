@@ -1,0 +1,49 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Testing
+tests
+coverage
+*.test.js
+jest.config.js
+
+# Development files
+.env*
+.env.local
+.env.development
+.env.test
+
+# Documentation
+*.md
+docs
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Samples and scripts (not needed in production)
+samples
+scripts
+
+# Logs
+logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist
+build
+
+# Temporary files
+tmp
+temp

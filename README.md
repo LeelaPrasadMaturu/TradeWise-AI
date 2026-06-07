@@ -2,6 +2,107 @@
 
 TradeWise AI is a sophisticated trading assistant that combines AI-powered analysis with comprehensive trade tracking and emotional intelligence to help traders make better decisions.
 
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Docker** & **Docker Compose** (recommended for full stack)
+- OR manually: Node.js 20+, MongoDB, Redis, Kafka (optional)
+
+### Option 1: Docker Compose (Recommended)
+
+```bash
+# Clone the repo
+git clone <repository>
+cd TradeWise-AI
+
+# Create environment file
+cp backend/.env.example backend/.env
+# Edit backend/.env with your API keys (see below)
+
+# Start everything
+docker compose up -d
+
+# Check services are running
+docker compose ps
+```
+
+**Services started by Docker Compose:**
+| Service | Port | URL |
+|---------|------|-----|
+| API | 3000 | http://localhost:3000 |
+| Frontend | 3001 | http://localhost:3001 |
+| MongoDB | 27017 | - |
+| Redis | 6379 | - |
+| Kafka | 9092 | - |
+| Prometheus | 9090 | http://localhost:9090 |
+| Grafana | 3002 | http://localhost:3002 (admin/admin) |
+| Jaeger | 16686 | http://localhost:16686 |
+
+### Option 2: Manual Setup (Development)
+
+```bash
+# Terminal 1: Start MongoDB
+mongod
+
+# Terminal 2: Start Redis (optional - app works without it)
+redis-server
+
+# Terminal 3: Backend
+cd backend
+cp .env.example .env
+# Edit .env with your API keys
+npm install
+npm run dev
+
+# Terminal 4: Frontend
+cd frontend
+npm install
+npm run dev
+```
+
+### Required API Keys
+
+Edit `backend/.env`:
+
+```env
+# Required
+MONGODB_URI=mongodb://localhost:27017/tradewise
+JWT_SECRET=your-secret-key
+
+# AI Services (at least one required for AI features)
+GOOGLE_AI_API_KEY=your-gemini-key      # For post-trade analysis, insights
+HUGGINGFACE_API_KEY=your-hf-key        # For emotion detection
+COHERE_API_KEY=your-cohere-key         # For term explanations
+```
+
+### Verify Installation
+
+```bash
+# Health check
+curl http://localhost:3000/health/detailed
+
+# Should return:
+# {
+#   "status": "ok",
+#   "services": {
+#     "mongodb": "connected",
+#     "redis": "connected" or "unavailable",
+#     "kafka": "connected" or "unavailable"
+#   }
+# }
+```
+
+### Access the App
+
+1. Open http://localhost:3001
+2. Register a new account
+3. Start logging trades!
+
+---
+
 ## ✨ Features
 
 ### 🤖 AI-Powered Intelligence
@@ -61,20 +162,138 @@ TradeWise AI is a sophisticated trading assistant that combines AI-powered analy
 - **CI/CD Pipeline**: Automated testing with GitHub Actions
 - **80%+ Code Coverage**: Ensuring reliability and quality
 
+## 🏗️ Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              INGRESS LAYER                                   │
+│   NGINX Ingress + Redis-based Rate Limiting (Token Bucket + Sliding Window) │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────────┐
+│                            APPLICATION LAYER                                 │
+│  ┌─────────────┐        ┌─────────────┐        ┌─────────────┐             │
+│  │   API       │        │   Worker    │        │  Frontend   │             │
+│  │  Servers    │        │  Processes  │        │  (Next.js)  │             │
+│  │  (HPA)      │        │   (HPA)     │        │             │             │
+│  └──────┬──────┘        └──────┬──────┘        └─────────────┘             │
+│         │                      │                                            │
+│  ┌──────▼──────────────────────▼──────┐                                    │
+│  │         Circuit Breakers           │  (Gemini, FinBERT, Cohere)        │
+│  │         Bulkhead Pattern           │  (Service Isolation)               │
+│  │         Retry w/ Backoff           │  (Fault Tolerance)                 │
+│  └────────────────────────────────────┘                                    │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────────┐
+│                           MESSAGING LAYER                                    │
+│  ┌────────────────────┐              ┌────────────────────┐                 │
+│  │   Apache Kafka     │              │   BullMQ Queues    │                 │
+│  │   (Event Stream)   │              │   (Job Processing) │                 │
+│  │                    │              │                    │                 │
+│  │ • trade.created    │              │ • ai-analysis      │                 │
+│  │ • pattern.detected │              │ • email-delivery   │                 │
+│  │ • alert.triggered  │              │ • pattern-detect   │                 │
+│  └────────────────────┘              └────────────────────┘                 │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────────┐
+│                             DATA LAYER                                       │
+│  ┌────────────────────┐              ┌────────────────────┐                 │
+│  │   Redis Cluster    │              │     MongoDB        │                 │
+│  │                    │              │                    │                 │
+│  │ • Cache-aside      │              │ • Primary DB       │                 │
+│  │ • Distributed Locks│              │ • Trade data       │                 │
+│  │ • Rate Limiting    │              │ • User profiles    │                 │
+│  │ • Pub/Sub          │              │ • Analytics        │                 │
+│  └────────────────────┘              └────────────────────┘                 │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+┌──────────────────────────────────▼──────────────────────────────────────────┐
+│                          OBSERVABILITY LAYER                                 │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                   │
+│  │ Prometheus  │────▶│   Grafana   │     │   Jaeger    │                   │
+│  │  (Metrics)  │     │ (Dashboards)│     │  (Tracing)  │                   │
+│  └─────────────┘     └─────────────┘     └─────────────┘                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## 🛠️ Tech Stack
 
+### Application Layer
 - **Backend**: Node.js, Express.js
+- **Frontend**: Next.js 16, React 19, TypeScript, TailwindCSS
 - **Database**: MongoDB with Mongoose ODM
-- **AI Services**:
-  - **Cohere AI**: Trading term explanations and educational content
-  - **Hugging Face FinBERT**: Emotion detection and sentiment analysis
-  - **Google Gemini 2.0**: Post-trade analysis, weekly insights, quiz & flashcard generation
 - **Authentication**: JWT (JSON Web Tokens)
-- **Testing**: Jest with Supertest (85+ tests, 80%+ coverage)
-- **CI/CD**: GitHub Actions for automated testing
-- **Email**: Nodemailer for weekly insights delivery
-- **Scheduling**: Node-cron for automated tasks
+
+### AI Services
+- **Google Gemini 2.0**: Post-trade analysis, weekly insights, quiz & flashcard generation
+- **Hugging Face FinBERT**: Emotion detection and sentiment analysis
+- **Cohere AI**: Trading term explanations and educational content
+
+### Distributed Systems
+- **Redis Cluster**: Distributed caching, rate limiting, distributed locks (Redlock)
+- **Apache Kafka**: Event streaming and async communication
+- **BullMQ**: Job queues for background processing
+- **Circuit Breakers**: Fault tolerance with Opossum
+
+### Cloud Native
+- **Docker**: Multi-stage containerization with security best practices
+- **Kubernetes**: Container orchestration with Helm charts
+- **HPA**: Horizontal Pod Autoscaler with custom metrics
+- **Argo Rollouts**: Canary deployments with automated analysis
+
+### Observability
+- **Prometheus**: Metrics collection and alerting
+- **Grafana**: Dashboards and visualization
+- **Jaeger**: Distributed tracing with OpenTelemetry
+
+### CI/CD & Testing
+- **GitHub Actions**: Automated CI/CD pipelines
+- **K6**: Load testing (smoke, load, stress, spike, HPA validation)
+- **Jest & Supertest**: 85+ tests, 80%+ coverage
+- **Trivy/Snyk**: Security scanning
+
+### Performance Optimizations
+- **Object Pooling**: High-throughput memory management
+- **Lock-free Structures**: Concurrent data structures
+- **Event Loop Optimization**: Async I/O patterns
+- **Memory Pools**: Efficient buffer management
+
+## 📚 Infrastructure Documentation
+
+For detailed setup guides and architecture documentation, see the [docs/](./docs/) folder:
+
+| Documentation | Description |
+|---------------|-------------|
+| **[docs/README.md](./docs/README.md)** | Documentation overview and architecture |
+| **[docs/infrastructure/redis.md](./docs/infrastructure/redis.md)** | Redis cluster, caching, rate limiting, distributed locks |
+| **[docs/infrastructure/kafka.md](./docs/infrastructure/kafka.md)** | Kafka event streaming and consumer setup |
+| **[docs/infrastructure/bullmq.md](./docs/infrastructure/bullmq.md)** | BullMQ job queues and workers |
+| **[docs/deployment/docker.md](./docs/deployment/docker.md)** | Docker and Docker Compose setup |
+| **[docs/deployment/kubernetes.md](./docs/deployment/kubernetes.md)** | Kubernetes, Helm, and HPA configuration |
+| **[docs/deployment/ci-cd.md](./docs/deployment/ci-cd.md)** | CI/CD pipelines and canary deployments |
+| **[docs/development/load-testing.md](./docs/development/load-testing.md)** | K6 load testing guide |
+| **[docs/development/observability.md](./docs/development/observability.md)** | Prometheus, Grafana, and Jaeger setup |
+
+### Quick Start with Docker
+
+```bash
+# Clone and start everything
+git clone <repository>
+cd TradeWise-AI
+cp backend/.env.example backend/.env  # Edit with your API keys
+
+# Start with Docker Compose
+docker compose up -d
+
+# Access services
+# API: http://localhost:3000
+# Frontend: http://localhost:3001
+# Grafana: http://localhost:3002
+# Prometheus: http://localhost:9090
+# Jaeger: http://localhost:16686
+```
 
 ## Prerequisites
 
@@ -1021,50 +1240,84 @@ The API uses standard HTTP status codes:
 ```
 TradeWise-AI/
 ├── backend/
-│   ├── config/          # Configuration files
-│   ├── middlewares/     # Express middlewares (auth, validation)
-│   ├── models/          # MongoDB models
+│   ├── config/              # Configuration files
+│   ├── events/              # Kafka event streaming
+│   │   ├── kafkaClient.js   # Kafka producer/consumer client
+│   │   ├── topics.js        # Topic definitions
+│   │   └── handlers/        # Event handlers
+│   ├── middlewares/         # Express middlewares
+│   │   ├── auth.js          # JWT authentication
+│   │   └── redisRateLimit.js # Distributed rate limiting
+│   ├── models/              # MongoDB models
 │   │   ├── User.js
-│   │   ├── Trade.js                  # Trade model with behavioral & discipline fields
-│   │   ├── TradeAlert.js
-│   │   ├── UserBaseline.js           # Trading style & baseline metrics
-│   │   ├── TradingRule.js            # User-defined trading rules
-│   │   ├── UserTradingConfig.js      # Trading config & checklist settings
-│   │   └── TradeRuleCheck.js         # Rule validation history
-│   ├── routes/          # API routes
-│   │   ├── importRoutes.js           # CSV import endpoints
-│   │   ├── behavioralRoutes.js       # Behavioral pattern analysis
-│   │   ├── rulesRoutes.js            # Trading rules CRUD & validation
-│   │   ├── disciplineRoutes.js       # Discipline score & reports
-│   │   └── coachRoutes.js            # Real-time coaching & briefings
-│   ├── services/        # Business logic
-│   │   ├── behavioralPatternService.js # 15 pattern detection algorithms
-│   │   ├── csvImportService.js       # Broker CSV parsing & trade matching
-│   │   ├── emotionDetectService.js   # FinBERT emotion detection
-│   │   ├── quizFlashcardService.js   # Personalized learning
-│   │   ├── insightsService.js        # Weekly insights + behavioral
-│   │   ├── postTradeAnalysisService.js # Post-trade AI + pattern warnings
-│   │   ├── ruleValidationService.js  # Pre-trade rule validation
-│   │   ├── disciplineScoreService.js # Discipline scoring & analytics
-│   │   ├── tradingCoachService.js    # Real-time alerts & pre-market briefing
-│   │   ├── schedulerService.js       # Cron jobs for daily briefings
-│   │   └── aiExplainService.js       # Cohere explanations
-│   └── server.js        # Express app entry point
-├── samples/             # Sample CSV files for import
-│   ├── zerodha_tradebook_sample.csv
-│   └── README.md        # CSV format documentation
-├── tests/
-│   ├── unit/            # Unit tests (30 tests)
-│   ├── integration/     # Integration tests (33 tests)
-│   ├── e2e/             # End-to-end tests (22 tests)
-│   ├── helpers/         # Test utilities
-│   └── setup.js         # Test configuration
+│   │   ├── Trade.js
+│   │   ├── UserBaseline.js
+│   │   ├── TradingRule.js
+│   │   └── ...
+│   ├── queues/              # BullMQ job queues
+│   │   ├── index.js         # Queue definitions
+│   │   └── workers/         # Queue workers
+│   │       ├── aiWorker.js
+│   │       ├── emailWorker.js
+│   │       └── patternWorker.js
+│   ├── routes/              # API routes
+│   ├── services/            # Business logic
+│   │   ├── redisService.js  # Redis caching & locks
+│   │   └── ...
+│   ├── utils/               # Utilities
+│   │   ├── circuitBreaker.js # Fault tolerance
+│   │   ├── metrics.js       # Prometheus metrics
+│   │   ├── objectPool.js    # Memory pooling
+│   │   ├── lockFree.js      # Lock-free structures
+│   │   └── eventLoop.js     # Event loop optimization
+│   ├── workers/
+│   │   └── index.js         # Worker process entry point
+│   ├── Dockerfile           # Multi-stage Docker build
+│   └── server.js            # Express app entry point
+├── frontend/
+│   ├── Dockerfile           # Next.js Docker build
+│   └── ...
+├── k8s/
+│   ├── base/                # Raw Kubernetes manifests
+│   │   ├── namespace.yaml
+│   │   ├── api-deployment.yaml
+│   │   ├── worker-deployment.yaml
+│   │   ├── hpa.yaml         # Horizontal Pod Autoscaler
+│   │   └── ...
+│   ├── helm/
+│   │   └── tradewise/       # Helm chart
+│   │       ├── Chart.yaml
+│   │       ├── values.yaml
+│   │       ├── values-staging.yaml
+│   │       └── values-production.yaml
+│   └── rollouts/            # Argo Rollouts
+│       ├── api-rollout.yaml
+│       └── analysis-template.yaml
+├── loadtests/               # K6 load tests
+│   ├── smoke.k6.js
+│   ├── load.k6.js
+│   ├── stress.k6.js
+│   ├── spike.k6.js
+│   └── hpa-validation.k6.js
+├── observability/           # Monitoring configs
+│   ├── prometheus/
+│   │   └── prometheus.yml
+│   └── grafana/
+│       ├── provisioning/
+│       └── dashboards/
+├── docs/                    # Documentation
+│   ├── infrastructure/      # Redis, Kafka, BullMQ docs
+│   ├── deployment/          # Docker, K8s, CI/CD docs
+│   └── development/         # Load testing, observability docs
 ├── .github/
 │   └── workflows/
-│       └── test.yml     # CI/CD pipeline
-├── jest.config.js       # Jest configuration
-├── package.json         # Dependencies and scripts
-└── README.md           # This file
+│       ├── ci.yml           # CI pipeline
+│       ├── cd-production.yml # Production deployment
+│       └── load-test.yml    # Load testing workflow
+├── docker-compose.yml       # Full stack development
+├── docker-compose.override.yml # Development overrides
+├── tests/                   # Test suites (85+ tests)
+└── README.md               # This file
 ```
 
 ## 🎯 How It Works

@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (built in container)
+node_modules
+*/node_modules
+
+# Build outputs
+.next
+out
+build
+dist
+coverage
+
+# Environment files
+.env*
+!.env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Tests
+tests
+*.test.js
+jest.config.js
+
+# Development
+samples
+scripts
+
+# Logs
+logs
+*.log
+
+# Kubernetes and infra (separate deployment)
+k8s
+observability
+loadtests
+
+# Misc
+.eslintcache
+*.tsbuildinfo
+tmp
+temp

@@ -1,0 +1,200 @@
+# TradeWise AI Helm Chart - Default Values
+
+# Global settings
+global:
+  imageRegistry: ghcr.io
+  imagePullSecrets: []
+
+# API Service
+api:
+  replicaCount: 3
+  
+  image:
+    repository: tradewise/api
+    tag: latest
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Worker Service
+worker:
+  replicaCount: 2
+  
+  image:
+    repository: tradewise/api
+    tag: latest
+    pullPolicy: Always
+  
+  command: ["node", "workers/index.js"]
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Frontend Service
+frontend:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    repository: tradewise/frontend
+    tag: latest
+    pullPolicy: Always
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  
+  env:
+    NEXT_PUBLIC_API_URL: "https://api.tradewise.ai"
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+  hosts:
+    - host: api.tradewise.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+    - host: app.tradewise.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls:
+    - secretName: tradewise-tls
+      hosts:
+        - api.tradewise.ai
+        - app.tradewise.ai
+
+# Environment Configuration
+config:
+  nodeEnv: production
+  logLevel: info
+  
+  # Database (if using external)
+  mongodb:
+    uri: ""  # Set in secrets or use subchart
+  
+  # Redis (if using external)
+  redis:
+    host: ""
+    port: 6379
+  
+  # Kafka (if using external)
+  kafka:
+    brokers: ""
+
+# Secrets (use external-secrets or sealed-secrets in production)
+secrets:
+  jwtSecret: ""
+  googleAiApiKey: ""
+  huggingfaceApiKey: ""
+  cohereApiKey: ""
+  smtpHost: ""
+  smtpPort: "587"
+  smtpUser: ""
+  smtpPass: ""
+  smtpFrom: "TradeWise AI <coach@tradewise.ai>"
+
+# MongoDB subchart configuration
+mongodb:
+  enabled: true
+  architecture: replicaset
+  replicaCount: 3
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    size: 20Gi
+
+# Redis subchart configuration
+redis:
+  enabled: true
+  architecture: replication
+  replica:
+    replicaCount: 2
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    size: 8Gi
+
+# Kafka subchart configuration
+kafka:
+  enabled: true
+  replicaCount: 3
+  zookeeper:
+    enabled: true
+    replicaCount: 3
+  persistence:
+    enabled: true
+    size: 20Gi
+
+# Observability
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+grafana:
+  enabled: false  # Use external Grafana
+
+jaeger:
+  enabled: true

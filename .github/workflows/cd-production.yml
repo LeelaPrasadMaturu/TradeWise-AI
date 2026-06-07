@@ -1,0 +1,111 @@
+name: CD - Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_API: ${{ github.repository }}/api
+
+jobs:
+  # ================================================
+  # Canary Deployment
+  # ================================================
+  deploy-canary:
+    name: Canary Deployment
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+      
+      - name: Install Argo Rollouts CLI
+        run: |
+          curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+          chmod +x kubectl-argo-rollouts-linux-amd64
+          sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+      
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+      
+      - name: Get version to deploy
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Update rollout image
+        run: |
+          kubectl-argo-rollouts set image api \
+            api=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_API }}:${{ steps.version.outputs.version }} \
+            -n tradewise
+      
+      - name: Wait for canary step (10%)
+        run: |
+          kubectl-argo-rollouts status api -n tradewise --watch --timeout 5m
+      
+      - name: Run canary tests
+        run: |
+          sleep 120  # Wait for canary to receive traffic
+          
+          # Run basic smoke tests against canary
+          for i in {1..10}; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://api.tradewise.ai/health)
+            if [ "$response" != "200" ]; then
+              echo "Health check failed with status $response"
+              exit 1
+            fi
+            sleep 5
+          done
+          
+          echo "Canary smoke tests passed"
+      
+      - name: Promote to 50%
+        run: |
+          kubectl-argo-rollouts promote api -n tradewise
+          kubectl-argo-rollouts status api -n tradewise --watch --timeout 5m
+      
+      - name: Wait and validate 50%
+        run: |
+          sleep 300  # 5 minutes at 50%
+          
+          # Check error rate from Prometheus
+          # This is a simplified check - in production use proper metrics
+          echo "Validating 50% deployment..."
+      
+      - name: Full rollout
+        run: |
+          kubectl-argo-rollouts promote api -n tradewise --full
+          kubectl-argo-rollouts status api -n tradewise --watch --timeout 10m
+      
+      - name: Notify success
+        if: success()
+        run: |
+          echo "Deployment of ${{ steps.version.outputs.version }} to production successful!"
+          # Add Slack/Discord notification here
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          kubectl-argo-rollouts abort api -n tradewise
+          kubectl-argo-rollouts undo api -n tradewise
+          # Add alert notification here

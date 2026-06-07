@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middlewares/authMiddleware');
 const { generateWeeklyInsights } = require('../services/insightsService');
+const redisService = require('../services/redisService');
+const { circuitBreakers } = require('../utils/circuitBreaker');
+
+// Cache TTLs
+const CACHE_TTL = {
+  WEEKLY_INSIGHTS: 900, // 15 min (AI-generated, expensive)
+};
 
 /**
  * @swagger
@@ -96,8 +103,43 @@ router.get('/weekly', auth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     
-    const insights = await generateWeeklyInsights(req.user._id, startDate, endDate);
-    res.json(insights);
+    // Generate cache key based on user and date range
+    const cacheKey = redisService.generateKey(
+      'insights:weekly',
+      req.user._id.toString(),
+      startDate || 'default',
+      endDate || 'default'
+    );
+    
+    // Use cache-aside with SWR for expensive AI calls
+    const { data: insights, fromCache, stale } = await redisService.getOrSetSWR(
+      cacheKey,
+      async () => {
+        // Wrap AI call with circuit breaker for resilience
+        const cb = circuitBreakers.gemini;
+        if (cb && cb.opened) {
+          // Circuit is open, return cached fallback or basic stats
+          return {
+            status: 'limited',
+            message: 'AI service temporarily unavailable, showing basic stats',
+            generatedAt: new Date().toISOString()
+          };
+        }
+        
+        const result = await generateWeeklyInsights(req.user._id, startDate, endDate);
+        return {
+          ...result,
+          generatedAt: new Date().toISOString()
+        };
+      },
+      CACHE_TTL.WEEKLY_INSIGHTS,
+      120 // 2 min stale tolerance
+    );
+    
+    res.json({
+      ...insights,
+      _cache: { hit: fromCache, stale }
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error generating insights', error: error.message });
   }

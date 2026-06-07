@@ -1,0 +1,65 @@
+# TradeWise AI - Staging Environment Values
+
+api:
+  replicaCount: 2
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+
+worker:
+  replicaCount: 1
+  
+  autoscaling:
+    enabled: false
+
+frontend:
+  replicaCount: 1
+
+ingress:
+  hosts:
+    - host: api.staging.tradewise.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+    - host: app.staging.tradewise.ai
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+  tls:
+    - secretName: tradewise-staging-tls
+      hosts:
+        - api.staging.tradewise.ai
+        - app.staging.tradewise.ai
+
+config:
+  logLevel: debug
+
+mongodb:
+  replicaCount: 1
+  persistence:
+    size: 5Gi
+
+redis:
+  replica:
+    replicaCount: 1
+  persistence:
+    size: 2Gi
+
+kafka:
+  replicaCount: 1
+  zookeeper:
+    replicaCount: 1
+  persistence:
+    size: 5Gi
